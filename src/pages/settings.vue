@@ -323,6 +323,14 @@ function changeApiEndpoint() {
               <div i-carbon-settings-adjust />
               <span>更换 API 端点</span>
             </button>
+
+            <button
+            bg-red-900 hover:bg-red-800 text-red-200 px-6 py-3 rounded w-full flex items-center justify-center gap-2
+            @click="showDeleteConfirm = true"
+          >
+            <div i-carbon-trash-can />
+            <span>删除账号</span>
+          </button>
           </div>
         </div>
 
@@ -339,22 +347,6 @@ function changeApiEndpoint() {
             <div i-carbon-logo-github />
             <span>查看 GitHub 仓库</span>
           </a>
-        </div>
-
-        <!-- Delete Account -->
-        <div bg-neutral-800 border-1 border-red-900 border-opacity-50 rounded-lg p-6>
-          <div text-lg font-bold mb-2 text-red-400>危险区</div>
-          <div text-sm text-neutral-400 mb-4>
-            一旦删除账号，将无法恢复。请确认你的操作。
-          </div>
-
-          <button
-            bg-red-900 hover:bg-red-800 text-red-200 px-6 py-3 rounded flex items-center justify-center gap-2
-            @click="showDeleteConfirm = true"
-          >
-            <div i-carbon-trash-can />
-            <span>删除账号</span>
-          </button>
         </div>
       </div>
 
