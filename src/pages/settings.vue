@@ -250,11 +250,22 @@ function clearMessages() {
                 当其他人扫码时自动为你签到
               </div>
             </div>
-            <input
-              v-model="isAuto"
-              type="checkbox"
-              @change="updateAutoSignin"
-            >
+            <div relative inline-block w-12 h-6>
+              <input
+                v-model="isAuto"
+                type="checkbox"
+                class="peer sr-only"
+                @change="updateAutoSignin"
+              >
+              <div
+                class="peer absolute inset-0 rounded-full transition-colors"
+                :class="isAuto ? 'bg-orange-600' : 'bg-neutral-700'"
+              />
+              <div
+                class="peer absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform"
+                :class="isAuto ? 'translate-x-6' : ''"
+              />
+            </div>
           </label>
         </div>
 

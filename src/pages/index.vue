@@ -185,7 +185,7 @@ async function debugWithLastResult() {
     }
     
     const lastScanResult = lastScans[0].result
-    const response = await signin(lastScanResult)
+    const response = await signin(lastScanResult, userStore.userId)
     scanResult.value = response
     await loadMainData()
   }
@@ -280,7 +280,7 @@ async function debugWithLastResult() {
     </div>
 
     <!-- Step 3: Main Page -->
-    <div v-else-if="step === 'main'" max-w-4xl mx-auto>
+    <div v-else-if="step === 'main'" max-w-4xl mx-auto mt-10>
       <!-- Header -->
       <div flex items-center justify-between mb-8>
         <div>
@@ -354,11 +354,11 @@ async function debugWithLastResult() {
         <div flex items-center justify-between mb-4>
           <div text-lg font-bold>最近扫码</div>
           <button
-            text-sm text-neutral-400 hover:text-neutral-200
+            text-sm text-neutral-400 hover:text-neutral-200 flex items-center gap-1
             @click="goToHistory"
           >
-            查看全部
-            <div i-carbon-chevron-right inline-block />
+            <span>查看全部</span>
+            <div i-carbon-chevron-right />
           </button>
         </div>
 
@@ -374,13 +374,10 @@ async function debugWithLastResult() {
           >
             <div flex items-start justify-between>
               <div flex-1 mr-4>
-                <div text-base font-medium text-neutral-200 mb-1>
+                <div text-base font-medium text-neutral-200 mb-2>
                   {{ getUserName(scan.user_id) }}
                 </div>
-                <div text-xs font-mono text-neutral-500 break-all>
-                  {{ scan.result.substring(0, 50) }}{{ scan.result.length > 50 ? '...' : '' }}
-                </div>
-                <div text-xs text-neutral-500 mt-2>
+                <div text-sm text-neutral-400>
                   {{ formatRelativeTime(scan.created_at) }}
                 </div>
               </div>

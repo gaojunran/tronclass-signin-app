@@ -26,6 +26,7 @@ const signinHistory = ref<SigninHistory[]>([])
 const signinPage = ref(1)
 const signinPageSize = ref(10)
 const signinHasMore = ref(true)
+const onlyMySignin = ref(false)
 
 // User map for displaying names
 const userMap = ref<Map<string, string>>(new Map())
@@ -66,9 +67,10 @@ async function loadSigninHistory(append = false) {
     error.value = ''
 
     const count = signinPage.value * signinPageSize.value
-    const response = await fetch(
-      `${userStore.apiEndpoint}/history/signin?user_id=${userStore.userId}&count=${count}`,
-    )
+    const url = onlyMySignin.value
+      ? `${userStore.apiEndpoint}/history/signin?user_id=${userStore.userId}&count=${count}`
+      : `${userStore.apiEndpoint}/history/signin?count=${count}`
+    const response = await fetch(url)
     const data = await response.json()
 
     if (append) {
@@ -111,6 +113,13 @@ function switchTab(tab: 'scan' | 'signin') {
   }
 }
 
+// Toggle only my signin filter
+function toggleOnlyMySignin() {
+  onlyMySignin.value = !onlyMySignin.value
+  signinPage.value = 1
+  loadSigninHistory(false)
+}
+
 // Initialize
 onMounted(async () => {
   if (!userStore.userId) {
@@ -151,6 +160,25 @@ function toggleExpand(id: string) {
 function getUserName(userId: string): string {
   return userMap.value.get(userId) || '未知用户'
 }
+
+// Get status tag for signin
+function getStatusTag(signin: SigninHistory): string | null {
+  if (!signin.response_code) {
+    return 'Internal Error'
+  }
+  
+  const responseData = String(signin.response_data || '')
+  
+  if (responseData.includes('return 405')) {
+    return '可能需要更新 cookie'
+  }
+  
+  if (responseData.includes('rollcall_closed')) {
+    return '签到已关闭'
+  }
+  
+  return null
+}
 </script>
 
 <template>
@@ -170,20 +198,20 @@ function getUserName(userId: string): string {
       <!-- Tabs -->
       <div flex gap-2 mb-6>
         <button
-          flex-1 py-3 rounded font-medium
+          flex-1 py-3 rounded font-medium flex items-center justify-center gap-2
           :class="activeTab === 'scan' ? 'bg-orange-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-750'"
           @click="switchTab('scan')"
         >
-          <div i-carbon-qr-code inline-block mr-2 />
-          扫码历史
+          <div i-carbon-qr-code />
+          <span>扫码历史</span>
         </button>
         <button
-          flex-1 py-3 rounded font-medium
+          flex-1 py-3 rounded font-medium flex items-center justify-center gap-2
           :class="activeTab === 'signin' ? 'bg-orange-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-750'"
           @click="switchTab('signin')"
         >
-          <div i-carbon-checkmark inline-block mr-2 />
-          签到历史
+          <div i-carbon-checkmark />
+          <span>签到历史</span>
         </button>
       </div>
 
@@ -258,6 +286,19 @@ function getUserName(userId: string): string {
 
       <!-- Signin History Tab -->
       <div v-if="activeTab === 'signin'">
+        <!-- Filter Option -->
+        <div mb-4 flex items-center justify-end>
+          <label flex items-center gap-2 cursor-pointer text-sm>
+            <input
+              v-model="onlyMySignin"
+              type="checkbox"
+              class="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-orange-600 focus:ring-orange-500 focus:ring-offset-neutral-900"
+              @change="toggleOnlyMySignin"
+            >
+            <span text-neutral-300>仅查看我的签到</span>
+          </label>
+        </div>
+
         <div v-if="loading && signinHistory.length === 0" text-center py-10>
           <div i-carbon-loading animate-spin text-4xl />
         </div>
@@ -283,7 +324,13 @@ function getUserName(userId: string): string {
                       text-xs px-2 py-1 rounded
                       :class="signin.response_code === 200 ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'"
                     >
-                      {{ signin.response_code }}
+                      {{ signin.response_code || 'N/A' }}
+                    </div>
+                    <div
+                      v-if="getStatusTag(signin)"
+                      text-xs px-2 py-1 rounded bg-yellow-900 text-yellow-300
+                    >
+                      {{ getStatusTag(signin) }}
                     </div>
                   </div>
                   <div text-xs text-neutral-500>
