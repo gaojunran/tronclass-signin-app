@@ -1,0 +1,51 @@
+// User data type
+export interface User {
+  id: string // Randomly generated, unique
+  name: string // Username
+  is_auto: boolean // Whether to participate in automatic sign-in, default true
+}
+
+// Cookie data type
+export interface Cookie {
+  id: string // Randomly generated, unique
+  user_id: string // Associated user id
+  value: string // Cookie content
+  expires: string // Expiration time
+  created_at: string // Upload time of this cookie
+}
+
+// UserWithCookie extends User with latest cookie info
+export interface UserWithCookie extends User {
+  latest_cookie: string // Latest cookie value
+  expires: string // Cookie expiration time
+}
+
+// Scan history data type
+export interface ScanHistory {
+  id: string // Randomly generated, unique
+  result: string // Scan result
+  user_id: string // Scanner's user id
+  created_at: string // Scan time
+}
+
+// Sign-in history data type
+export interface SigninHistory {
+  id: string // Randomly generated, unique
+  user_id: string // User id for whom to sign in
+  cookie: string // Cookie carried during sign-in
+  scan_history_id: string // Which scan result was used
+  request_data: string // Data carried in sign-in request
+  response_code: number // Response status code
+  response_data: string // Response body
+  created_at: string // Sign-in time
+}
+
+// API response types
+export interface SigninResponse {
+  scan_result: ScanHistory
+  signin_results: SigninHistory[]
+}
+
+export interface UserAddResponse {
+  id: string
+}
