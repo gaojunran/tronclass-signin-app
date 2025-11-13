@@ -160,6 +160,19 @@ export async function refreshUserCookie(id: string, cookie: string): Promise<voi
 }
 
 /**
+ * Update user's unified identity account/password
+ * POST /user/identity/update/<id>
+ */
+export async function updateUserIdentity(id: string, account: string, password: string): Promise<void> {
+  const ua_info = await getBrowserInfo()
+
+  return fetchAPI<void>(`/user/identity/update/${id}`, {
+    method: 'POST',
+    body: JSON.stringify({ ua_info, account, password }),
+  })
+}
+
+/**
  * Update user's is_auto value
  * POST /user/auto/<id>
  */

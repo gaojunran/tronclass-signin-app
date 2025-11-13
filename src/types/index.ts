@@ -3,6 +3,9 @@ export interface User {
   id: string // Randomly generated, unique
   name: string // Username
   is_auto: boolean // Whether to participate in automatic sign-in, default true
+  // Optional unified identity (统一身份认证) fields
+  identity_account?: string
+  identity_password?: string
 }
 
 // Cookie data type
@@ -18,6 +21,9 @@ export interface Cookie {
 export interface UserWithCookie extends User {
   latest_cookie: string // Latest cookie value
   expires: string // Cookie expiration time
+  // Keep identity fields available on list responses as well
+  identity_account?: string
+  identity_password?: string
 }
 
 // Scan history data type

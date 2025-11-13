@@ -8,10 +8,9 @@
 ## 功能特性
 
 - ⚡ 仅需一个人扫码，为所有启用的用户自动批量签到
-- 📱 使用设备摄像头扫描二维码
+- 📱 扫码签到和数字签到
 - 📊 扫码和签到历史记录追踪
 - ✨ 前后端解耦，支持自定义后端 API 端点，轻松适配你的大学！
-- (WIP) 数字签到和雷达签到支持
 
 ## 技术栈
 
@@ -47,8 +46,9 @@ pnpm run build
 
 - [x] API 端点输入框开后门
 - [x] `GET /backend` 端点支持，获取后端信息，用来渲染 cookie 提示 / 后端仓库地址。
-- [ ] 扫码框支持缩放（似乎做不了？）
-
+- [x] 支持拍照签到
+- [x] 支持数字签到
+- [x] 迁移到 Drizzle
 
 ## 项目结构
 
@@ -79,12 +79,14 @@ src/
 - `POST /user/rename/<id>` - 重命名用户
 - `POST /user/refresh/<id>` - 更新用户 Cookie
 - `POST /user/auto/<id>` - 更新自动签到设置
+- `POST /user/identity/update/<id>` - 更新用户统一认证信息
 - `POST /signin` - 提交扫描结果并触发签到
+- `POST /signin-digital` - 数字签到
 - `GET /history/scan` - 获取扫码历史
 - `GET /history/signin` - 获取签到历史
-- (WIP) `GET /backend` - 获取后端 API 信息
+- `GET /backend/repo/url` - 获取后端 API 仓库 URL
 
-[学在重邮后端](https://github.com/gaojunran/tronclass-signin-api-cqupt) 是一个示例的后端实现，使用 Hono + Deno + Prisma + Postgres 构建。你可以基于自己的技术栈，构建自己大学的 API 端点。
+[学在重邮后端](https://github.com/gaojunran/tronclass-signin-api-cqupt) 是一个示例的后端实现，使用 Hono + Deno + Drizzle + Postgres 构建。你可以基于自己的技术栈，构建自己大学的 API 端点。
 
 ## 许可证
 
