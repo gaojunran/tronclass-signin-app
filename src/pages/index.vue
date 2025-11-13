@@ -398,7 +398,7 @@ async function debugWithLastResult() {
       v-if="showScanner"
       fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-6
     >
-      <div max-w-2xl w-full max-h-70vh flex flex-col>
+      <div max-w-2xl w-full flex flex-col>
         <div flex items-center justify-between mb-4 flex-shrink-0>
           <div text-xl font-bold>扫描二维码</div>
           <div flex items-center gap-2>
@@ -420,7 +420,7 @@ async function debugWithLastResult() {
         </div>
 
         <div bg-neutral-900 rounded-lg overflow-hidden relative flex-shrink min-h-0>
-          <video ref="videoElement" w-full h-auto max-h-full object-contain />
+          <video ref="videoElement" w-full h-auto max-h-70vh object-contain />
           
           <!-- Loading Overlay -->
           <div
