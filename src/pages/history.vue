@@ -167,7 +167,7 @@ function getStatusTag(signin: SigninHistory): string | null {
     return 'Internal Error'
   }
   
-  const responseData = String(signin.response_data || '')
+  const responseData = JSON.stringify(signin.response_data || '')
   
   if (responseData.includes('return 405')) {
     return '可能需要更新 cookie'
