@@ -123,8 +123,9 @@ async function startQRScan() {
     await startScanning(videoElement.value, handleScanResult)
   }
   catch (err) {
-    error.value = '无法启动摄像头'
-    showScanner.value = false
+    console.warn('无法启动摄像头，fallback到调试模式:', err)
+    // Fallback to debug mode using last scan result
+    await debugWithLastResult()
   }
   }
 }
