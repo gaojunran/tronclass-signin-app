@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { ScanHistory, SigninHistory } from '~/types/index'
+import type { ScanHistory, SigninHistory, UserWithCookie } from '~/types/index'
 import { formatDate, formatRelativeTime } from '~/utils'
+import { getUserList } from '~/api'
 
 defineOptions({
   name: 'HistoryPage',
@@ -26,6 +27,9 @@ const signinPage = ref(1)
 const signinPageSize = ref(10)
 const signinHasMore = ref(true)
 
+// User map for displaying names
+const userMap = ref<Map<string, string>>(new Map())
+
 // Load scan history
 async function loadScanHistory(append = false) {
   try {
@@ -48,7 +52,7 @@ async function loadScanHistory(append = false) {
     scanHasMore.value = data.length === count
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load scan history'
+    error.value = err instanceof Error ? err.message : '加载扫码历史失败'
   }
   finally {
     loading.value = false
@@ -77,7 +81,7 @@ async function loadSigninHistory(append = false) {
     signinHasMore.value = data.length === count
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load signin history'
+    error.value = err instanceof Error ? err.message : '加载签到历史失败'
   }
   finally {
     loading.value = false
@@ -108,10 +112,19 @@ function switchTab(tab: 'scan' | 'signin') {
 }
 
 // Initialize
-onMounted(() => {
+onMounted(async () => {
   if (!userStore.userId) {
     router.push('/')
     return
+  }
+
+  // Load user list for name mapping
+  try {
+    const users = await getUserList()
+    userMap.value = new Map(users.map(u => [u.id, u.name]))
+  }
+  catch (err) {
+    console.error('加载用户列表失败:', err)
   }
 
   loadScanHistory()
@@ -133,6 +146,11 @@ function toggleExpand(id: string) {
     expandedItems.value.add(id)
   }
 }
+
+// Get user name by id
+function getUserName(userId: string): string {
+  return userMap.value.get(userId) || '未知用户'
+}
 </script>
 
 <template>
@@ -146,7 +164,7 @@ function toggleExpand(id: string) {
         >
           <div i-carbon-arrow-left text-xl />
         </button>
-        <div text-2xl font-bold>History</div>
+        <div text-2xl font-bold>历史记录</div>
       </div>
 
       <!-- Tabs -->
@@ -157,7 +175,7 @@ function toggleExpand(id: string) {
           @click="switchTab('scan')"
         >
           <div i-carbon-qr-code inline-block mr-2 />
-          Scan History
+          扫码历史
         </button>
         <button
           flex-1 py-3 rounded font-medium
@@ -165,7 +183,7 @@ function toggleExpand(id: string) {
           @click="switchTab('signin')"
         >
           <div i-carbon-checkmark inline-block mr-2 />
-          Signin History
+          签到历史
         </button>
       </div>
 
@@ -181,7 +199,7 @@ function toggleExpand(id: string) {
         </div>
 
         <div v-else-if="scanHistory.length === 0" text-center py-10 text-neutral-500>
-          No scan history yet
+          暂无扫码记录
         </div>
 
         <div v-else space-y-3>
@@ -193,8 +211,11 @@ function toggleExpand(id: string) {
             <div p-4 cursor-pointer @click="toggleExpand(scan.id)">
               <div flex items-start justify-between>
                 <div flex-1 mr-4>
-                  <div text-sm font-mono text-neutral-300 break-all>
-                    {{ scan.result.substring(0, 80) }}{{ scan.result.length > 80 ? '...' : '' }}
+                  <div text-base font-medium text-neutral-200 mb-1>
+                    {{ getUserName(scan.user_id) }}
+                  </div>
+                  <div text-xs font-mono text-neutral-500 break-all>
+                    {{ scan.result.substring(0, 60) }}{{ scan.result.length > 60 ? '...' : '' }}
                   </div>
                   <div text-xs text-neutral-500 mt-2>
                     {{ formatRelativeTime(scan.created_at) }}
@@ -211,14 +232,14 @@ function toggleExpand(id: string) {
               v-if="expandedItems.has(scan.id)"
               bg-neutral-900 p-4 border-t-1 border-neutral-700
             >
-              <div text-xs text-neutral-400 mb-2>Full Result:</div>
+              <div text-xs text-neutral-400 mb-2>完整结果：</div>
               <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
                 {{ scan.result }}
               </div>
               <div text-xs text-neutral-500 mt-3>
                 <div>ID: {{ scan.id }}</div>
-                <div>Time: {{ formatDate(scan.created_at) }}</div>
-                <div>User ID: {{ scan.user_id }}</div>
+                <div>时间：{{ formatDate(scan.created_at) }}</div>
+                <div>扫码者：{{ getUserName(scan.user_id) }}</div>
               </div>
             </div>
           </div>
@@ -230,7 +251,7 @@ function toggleExpand(id: string) {
             :disabled="loading"
             @click="loadMoreScan"
           >
-            {{ loading ? 'Loading...' : 'Load More' }}
+            {{ loading ? '加载中...' : '加载更多' }}
           </button>
         </div>
       </div>
@@ -242,7 +263,7 @@ function toggleExpand(id: string) {
         </div>
 
         <div v-else-if="signinHistory.length === 0" text-center py-10 text-neutral-500>
-          No signin history yet
+          暂无签到记录
         </div>
 
         <div v-else space-y-3>
@@ -255,18 +276,18 @@ function toggleExpand(id: string) {
               <div flex items-start justify-between>
                 <div flex-1>
                   <div flex items-center gap-2 mb-2>
+                    <div text-base font-medium text-neutral-200>
+                      {{ getUserName(signin.user_id) }}
+                    </div>
                     <div
                       text-xs px-2 py-1 rounded
                       :class="signin.response_code === 200 ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'"
                     >
                       {{ signin.response_code }}
                     </div>
-                    <div text-xs text-neutral-500>
-                      {{ formatRelativeTime(signin.created_at) }}
-                    </div>
                   </div>
-                  <div text-sm text-neutral-400>
-                    Scan ID: {{ signin.scan_history_id.substring(0, 16) }}...
+                  <div text-xs text-neutral-500>
+                    {{ formatRelativeTime(signin.created_at) }}
                   </div>
                 </div>
                 <div
@@ -281,14 +302,14 @@ function toggleExpand(id: string) {
               bg-neutral-900 p-4 border-t-1 border-neutral-700 space-y-3
             >
               <div>
-                <div text-xs text-neutral-400 mb-2>Request Data:</div>
+                <div text-xs text-neutral-400 mb-2>请求数据：</div>
                 <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
                   {{ signin.request_data }}
                 </div>
               </div>
 
               <div>
-                <div text-xs text-neutral-400 mb-2>Response Data:</div>
+                <div text-xs text-neutral-400 mb-2>响应数据：</div>
                 <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
                   {{ signin.response_data }}
                 </div>
@@ -296,7 +317,8 @@ function toggleExpand(id: string) {
 
               <div text-xs text-neutral-500>
                 <div>ID: {{ signin.id }}</div>
-                <div>Time: {{ formatDate(signin.created_at) }}</div>
+                <div>时间：{{ formatDate(signin.created_at) }}</div>
+                <div>签到者：{{ getUserName(signin.user_id) }}</div>
                 <div>Cookie: {{ signin.cookie.substring(0, 40) }}...</div>
               </div>
             </div>
@@ -309,7 +331,7 @@ function toggleExpand(id: string) {
             :disabled="loading"
             @click="loadMoreSignin"
           >
-            {{ loading ? 'Loading...' : 'Load More' }}
+            {{ loading ? '加载中...' : '加载更多' }}
           </button>
         </div>
       </div>

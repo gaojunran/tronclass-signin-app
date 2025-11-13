@@ -162,12 +162,12 @@ export async function updateUserAuto(id: string, is_auto: boolean): Promise<void
  * Scan QR code and sign in for all users
  * POST /signin
  */
-export async function signin(scan_result: string): Promise<SigninResponse> {
+export async function signin(scan_result: string, user_id: string): Promise<SigninResponse> {
   const ua_info = await getBrowserInfo()
 
   return fetchAPI<SigninResponse>('/signin', {
     method: 'POST',
-    body: JSON.stringify({ ua_info, scan_result }),
+    body: JSON.stringify({ ua_info, scan_result, user_id }),
   })
 }
 

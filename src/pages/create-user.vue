@@ -18,12 +18,12 @@ const error = ref('')
 // Create user
 async function createUser() {
   if (!name.value.trim()) {
-    error.value = 'Please enter a name'
+    error.value = '请输入名字'
     return
   }
 
   if (!cookie.value.trim()) {
-    error.value = 'Please enter cookie'
+    error.value = '请输入 Cookie'
     return
   }
 
@@ -57,7 +57,7 @@ async function createUser() {
     router.push('/')
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to create user'
+    error.value = err instanceof Error ? err.message : '创建用户失败'
   }
   finally {
     loading.value = false
@@ -115,7 +115,7 @@ function goBack() {
         >
           <div i-carbon-arrow-left text-xl />
         </button>
-        <div text-2xl font-bold>Create New User</div>
+        <div text-2xl font-bold>创建新用户</div>
       </div>
 
       <!-- Form -->
@@ -123,12 +123,12 @@ function goBack() {
         <!-- Name -->
         <div mb-6>
           <label text-sm text-neutral-400 mb-2 block>
-            Name <span text-red-400>*</span>
+            名字 <span text-red-400>*</span>
           </label>
           <input
             v-model="name"
             type="text"
-            placeholder="Enter your name"
+            placeholder="输入你的名字"
             bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 w-full
             focus:outline-none focus:border-neutral-500
           >
@@ -143,8 +143,8 @@ function goBack() {
               mr-3
             >
             <div>
-              <div text-sm font-medium>Enable Auto Signin</div>
-              <div text-xs text-neutral-500>Automatically sign in when others scan QR codes</div>
+              <div text-sm font-medium>启用自动签到</div>
+              <div text-xs text-neutral-500>当其他人扫码时自动为你签到</div>
             </div>
           </label>
         </div>
@@ -156,7 +156,7 @@ function goBack() {
           </label>
           <textarea
             v-model="cookie"
-            placeholder="Paste your cookie here"
+            placeholder="在此粘贴你的 Cookie"
             bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 w-full
             rows="6"
             font-mono text-sm
@@ -164,7 +164,7 @@ function goBack() {
           />
           <div text-xs text-neutral-500 mt-2>
             <div i-carbon-information inline-block mr-1 />
-            Copy the cookie from your browser's developer tools
+            从浏览器开发者工具中复制 Cookie
           </div>
         </div>
 
@@ -179,7 +179,7 @@ function goBack() {
           :disabled="loading"
           @click="createUser"
         >
-          {{ loading ? 'Creating...' : 'Create User' }}
+          {{ loading ? '创建中...' : '创建用户' }}
         </button>
       </div>
 
@@ -187,13 +187,13 @@ function goBack() {
       <div mt-6 text-sm text-neutral-500>
         <div mb-2>
           <div i-carbon-help inline-block mr-1 />
-          How to get your cookie:
+          如何获取 Cookie：
         </div>
         <ol list-decimal list-inside space-y-1 ml-4>
-          <li>Open your browser's developer tools (F12)</li>
-          <li>Go to the Application/Storage tab</li>
-          <li>Find Cookies in the left sidebar</li>
-          <li>Copy the cookie value you need</li>
+          <li>打开浏览器开发者工具（F12）</li>
+          <li>进入 Application/Storage 选项卡</li>
+          <li>在左侧边栏找到 Cookies</li>
+          <li>复制你需要的 Cookie 值</li>
         </ol>
       </div>
     </div>

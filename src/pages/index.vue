@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { ScanHistory, SigninHistory, SigninResponse, UserWithCookie } from '~/types/index'
 import { formatRelativeTime } from '~/utils'
-import { getUserList, signin } from '~/api'
+import { getUserList, signin, getScanHistory, getSigninHistory } from '~/api'
 import { useQRScanner } from '~/composables/qrScanner'
 
 defineOptions({
@@ -21,6 +21,9 @@ const error = ref('')
 // Recent scan history
 const recentScans = ref<ScanHistory[]>([])
 const lastSignin = ref<SigninHistory | null>(null)
+
+// User map for displaying names
+const userMap = ref<Map<string, string>>(new Map())
 
 // QR Scanner
 const showScanner = ref(false)
@@ -51,9 +54,11 @@ async function loadUsers() {
     loading.value = true
     error.value = ''
     users.value = await getUserList()
+    // Build user map
+    userMap.value = new Map(users.value.map(u => [u.id, u.name]))
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to load users'
+    error.value = err instanceof Error ? err.message : '加载用户列表失败'
   }
   finally {
     loading.value = false
@@ -63,7 +68,7 @@ async function loadUsers() {
 // Set API endpoint
 async function setApiEndpoint() {
   if (!apiUrl.value.trim()) {
-    error.value = 'Please enter API endpoint URL'
+    error.value = '请输入 API 端点 URL'
     return
   }
 
@@ -89,15 +94,18 @@ function createNewUser() {
 async function loadMainData() {
   try {
     loading.value = true
-    const [scans, signins] = await Promise.all([
-      fetch(`${userStore.apiEndpoint}/history/scan?count=3`).then(r => r.json()),
-      fetch(`${userStore.apiEndpoint}/history/signin?user_id=${userStore.userId}&count=1`).then(r => r.json()),
+    const [scans, signins, allUsers] = await Promise.all([
+      getScanHistory(3),
+      getSigninHistory(1, userStore.userId),
+      getUserList(),
     ])
     recentScans.value = scans
     lastSignin.value = signins.length > 0 ? signins[0] : null
+    // Build user map
+    userMap.value = new Map(allUsers.map(u => [u.id, u.name]))
   }
   catch (err) {
-    console.error('Failed to load data:', err)
+    console.error('加载数据失败:', err)
   }
   finally {
     loading.value = false
@@ -111,13 +119,13 @@ async function startQRScan() {
   await nextTick()
 
   if (videoElement.value) {
-    try {
-      await startScanning(videoElement.value, handleScanResult)
-    }
-    catch (err) {
-      error.value = 'Failed to start camera'
-      showScanner.value = false
-    }
+  try {
+    await startScanning(videoElement.value, handleScanResult)
+  }
+  catch (err) {
+    error.value = '无法启动摄像头'
+    showScanner.value = false
+  }
   }
 }
 
@@ -128,12 +136,12 @@ async function handleScanResult(result: string) {
 
   try {
     loading.value = true
-    const response = await signin(result)
+    const response = await signin(result, userStore.userId)
     scanResult.value = response
     await loadMainData()
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to sign in'
+    error.value = err instanceof Error ? err.message : '签到失败'
   }
   finally {
     loading.value = false
@@ -155,6 +163,11 @@ function goToSettings() {
 function goToHistory() {
   router.push('/history')
 }
+
+// Get user name by id
+function getUserName(userId: string): string {
+  return userMap.value.get(userId) || '未知用户'
+}
 </script>
 
 <template>
@@ -163,11 +176,11 @@ function goToHistory() {
     <div v-if="step === 'config'" max-w-md mx-auto mt-20>
       <div text-3xl font-bold mb-8>
         <div i-carbon-qr-code inline-block mr-2 />
-        Signin App
+        畅课签到助手
       </div>
 
       <div mb-6>
-        <label text-sm text-neutral-400 mb-2 block>API Endpoint URL</label>
+        <label text-sm text-neutral-400 mb-2 block>API 端点 URL</label>
         <input
           v-model="apiUrl"
           type="url"
@@ -183,7 +196,7 @@ function goToHistory() {
         :disabled="loading"
         @click="setApiEndpoint"
       >
-        {{ loading ? 'Connecting...' : 'Continue' }}
+        {{ loading ? '连接中...' : '继续' }}
       </button>
 
       <div v-if="error" mt-4 text-red-400 text-sm>
@@ -194,7 +207,7 @@ function goToHistory() {
     <!-- Step 2: User Selection -->
     <div v-else-if="step === 'select-user'" max-w-2xl mx-auto mt-10>
       <div text-2xl font-bold mb-6>
-        Select Your Account
+        选择你的账号
       </div>
 
       <div v-if="loading" text-center py-10>
@@ -213,10 +226,10 @@ function goToHistory() {
               <div>
                 <div text-lg font-medium>{{ user.name }}</div>
                 <div text-sm text-neutral-400>
-                  Auto signin: {{ user.is_auto ? 'Yes' : 'No' }}
+                  自动签到：{{ user.is_auto ? '是' : '否' }}
                 </div>
                 <div v-if="user.expires" text-xs text-neutral-500 mt-1>
-                  Cookie expires: {{ new Date(user.expires).toLocaleDateString() }}
+                  Cookie 过期时间：{{ new Date(user.expires).toLocaleDateString() }}
                 </div>
               </div>
               <div i-carbon-chevron-right text-xl text-neutral-500 />
@@ -229,7 +242,7 @@ function goToHistory() {
           @click="createNewUser"
         >
           <div i-carbon-add inline-block mr-2 />
-          Create New User
+          创建新用户
         </button>
       </div>
 
@@ -243,9 +256,9 @@ function goToHistory() {
       <!-- Header -->
       <div flex items-center justify-between mb-8>
         <div>
-          <div text-2xl font-bold>Welcome, {{ userStore.userName }}</div>
+          <div text-2xl font-bold>欢迎，{{ userStore.userName }}</div>
           <div text-sm text-neutral-400 mt-1>
-            Last signin: {{ lastSignin ? formatRelativeTime(lastSignin.created_at) : 'Never' }}
+            上次签到：{{ lastSignin ? formatRelativeTime(lastSignin.created_at) : '从未签到' }}
           </div>
         </div>
         <button
@@ -260,18 +273,18 @@ function goToHistory() {
       <div v-if="scanResult" bg-neutral-800 border-1 border-neutral-700 rounded p-6 mb-6>
         <div text-lg font-bold mb-4>
           <div i-carbon-checkmark-filled inline-block text-green-400 mr-2 />
-          Scan Complete
+          扫码完成
         </div>
 
         <div mb-4>
-          <div text-sm text-neutral-400 mb-1>Scan Result:</div>
+          <div text-sm text-neutral-400 mb-1>扫码结果：</div>
           <div text-sm font-mono bg-neutral-900 p-3 rounded break-all>
             {{ scanResult.scan_result.result }}
           </div>
         </div>
 
         <div>
-          <div text-sm text-neutral-400 mb-2>Signin Results ({{ scanResult.signin_results.length }}):</div>
+          <div text-sm text-neutral-400 mb-2>签到结果（{{ scanResult.signin_results.length }} 人）：</div>
           <div space-y-2>
             <div
               v-for="signinItem in scanResult.signin_results"
@@ -279,7 +292,7 @@ function goToHistory() {
               bg-neutral-900 p-3 rounded text-sm
             >
               <div flex items-center justify-between>
-                <div>User ID: {{ signinItem.user_id }}</div>
+                <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
                 <div
                   :class="signinItem.response_code === 200 ? 'text-green-400' : 'text-red-400'"
                 >
@@ -294,35 +307,35 @@ function goToHistory() {
           mt-4 bg-neutral-700 hover:bg-neutral-600 px-4 py-2 rounded text-sm
           @click="scanResult = null"
         >
-          Close
+          关闭
         </button>
       </div>
 
       <!-- Scan Button -->
       <button
-        bg-orange-600 hover:bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-medium w-full mb-8
+        bg-orange-600 hover:bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-medium w-full mb-8 flex items-center justify-center
         :disabled="loading || isScanning"
         @click="startQRScan"
       >
-        <div i-carbon-qr-code inline-block mr-2 text-2xl />
-        {{ isScanning ? 'Scanning...' : 'Scan QR Code' }}
+        <div i-carbon-qr-code mr-2 text-2xl />
+        <span>{{ isScanning ? '扫码中...' : '扫码签到' }}</span>
       </button>
 
       <!-- Recent Scans -->
       <div mb-8>
         <div flex items-center justify-between mb-4>
-          <div text-lg font-bold>Recent Scans</div>
+          <div text-lg font-bold>最近扫码</div>
           <button
             text-sm text-neutral-400 hover:text-neutral-200
             @click="goToHistory"
           >
-            View All
+            查看全部
             <div i-carbon-chevron-right inline-block />
           </button>
         </div>
 
         <div v-if="recentScans.length === 0" text-center py-8 text-neutral-500>
-          No scan history yet
+          暂无扫码记录
         </div>
 
         <div v-else space-y-3>
@@ -333,8 +346,11 @@ function goToHistory() {
           >
             <div flex items-start justify-between>
               <div flex-1 mr-4>
-                <div text-sm font-mono text-neutral-300 break-all>
-                  {{ scan.result.substring(0, 60) }}{{ scan.result.length > 60 ? '...' : '' }}
+                <div text-base font-medium text-neutral-200 mb-1>
+                  {{ getUserName(scan.user_id) }}
+                </div>
+                <div text-xs font-mono text-neutral-500 break-all>
+                  {{ scan.result.substring(0, 50) }}{{ scan.result.length > 50 ? '...' : '' }}
                 </div>
                 <div text-xs text-neutral-500 mt-2>
                   {{ formatRelativeTime(scan.created_at) }}
@@ -359,7 +375,7 @@ function goToHistory() {
     >
       <div max-w-2xl w-full>
         <div flex items-center justify-between mb-4>
-          <div text-xl font-bold>Scan QR Code</div>
+          <div text-xl font-bold>扫描二维码</div>
           <button
             bg-neutral-800 hover:bg-neutral-700 p-2 rounded
             @click="closeScanner"
@@ -373,7 +389,7 @@ function goToHistory() {
         </div>
 
         <div text-sm text-neutral-400 text-center mt-4>
-          Position the QR code within the frame
+          将二维码放置在框内
         </div>
       </div>
     </div>

@@ -125,7 +125,7 @@ POST 请求，请求体：ua_info, is_auto
 
 /signin：扫码签到，上传扫码结果，自动给所有用户签到，返回签到结果
 
-POST 请求，请求体：ua_info, scan_result，返回的数据结构是:
+POST 请求，请求体：ua_info, scan_result, user_id，返回的数据结构是:
 
 {
   "scan_result": ScanHistory,

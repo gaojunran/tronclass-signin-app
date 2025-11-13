@@ -41,7 +41,7 @@ onMounted(async () => {
     }
   }
   catch (err) {
-    error.value = 'Failed to load user data'
+    error.value = '加载用户数据失败'
   }
   finally {
     loading.value = false
@@ -66,10 +66,10 @@ async function updateName() {
       currentUser.value.name = newName.value.trim()
     }
 
-    success.value = 'Name updated successfully'
+    success.value = '名字修改成功'
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to update name'
+    error.value = err instanceof Error ? err.message : '修改名字失败'
   }
   finally {
     loading.value = false
@@ -89,10 +89,10 @@ async function updateAutoSignin() {
       currentUser.value.is_auto = isAuto.value
     }
 
-    success.value = 'Auto signin setting updated'
+    success.value = '自动签到设置已更新'
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to update setting'
+    error.value = err instanceof Error ? err.message : '更新设置失败'
   }
   finally {
     loading.value = false
@@ -102,7 +102,7 @@ async function updateAutoSignin() {
 // Update cookie
 async function updateCookie() {
   if (!newCookie.value.trim()) {
-    error.value = 'Please enter cookie'
+    error.value = '请输入 Cookie'
     return
   }
 
@@ -113,7 +113,7 @@ async function updateCookie() {
 
     await refreshUserCookie(userStore.userId, newCookie.value.trim())
 
-    success.value = 'Cookie updated successfully'
+    success.value = 'Cookie 更新成功'
     newCookie.value = ''
 
     // Reload user data
@@ -121,7 +121,7 @@ async function updateCookie() {
     currentUser.value = users.find(u => u.id === userStore.userId) || null
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to update cookie'
+    error.value = err instanceof Error ? err.message : '更新 Cookie 失败'
   }
   finally {
     loading.value = false
@@ -140,7 +140,7 @@ async function deleteAccount() {
     router.push('/')
   }
   catch (err) {
-    error.value = err instanceof Error ? err.message : 'Failed to delete account'
+    error.value = err instanceof Error ? err.message : '删除账号失败'
     showDeleteConfirm.value = false
   }
   finally {
@@ -171,7 +171,7 @@ function clearMessages() {
         >
           <div i-carbon-arrow-left text-xl />
         </button>
-        <div text-2xl font-bold>Settings</div>
+        <div text-2xl font-bold>设置</div>
       </div>
 
       <!-- Loading -->
@@ -185,31 +185,31 @@ function clearMessages() {
         <div v-if="error" bg-red-900 bg-opacity-20 border-1 border-red-700 rounded p-4 text-red-400 text-sm>
           {{ error }}
           <button ml-2 text-xs underline @click="clearMessages">
-            Dismiss
+            关闭
           </button>
         </div>
 
         <div v-if="success" bg-green-900 bg-opacity-20 border-1 border-green-700 rounded p-4 text-green-400 text-sm>
           {{ success }}
           <button ml-2 text-xs underline @click="clearMessages">
-            Dismiss
+            关闭
           </button>
         </div>
 
         <!-- User Info -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
-          <div text-lg font-bold mb-4>User Information</div>
+          <div text-lg font-bold mb-4>用户信息</div>
 
           <div space-y-4>
             <div>
-              <div text-sm text-neutral-400 mb-1>User ID</div>
+              <div text-sm text-neutral-400 mb-1>用户 ID</div>
               <div text-sm font-mono bg-neutral-900 p-3 rounded break-all>
                 {{ userStore.userId }}
               </div>
             </div>
 
             <div v-if="currentUser?.expires">
-              <div text-sm text-neutral-400 mb-1>Cookie Expires</div>
+              <div text-sm text-neutral-400 mb-1>Cookie 过期时间</div>
               <div text-sm>
                 {{ new Date(currentUser.expires).toLocaleString() }}
               </div>
@@ -219,13 +219,13 @@ function clearMessages() {
 
         <!-- Update Name -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
-          <div text-lg font-bold mb-4>Change Name</div>
+          <div text-lg font-bold mb-4>修改名字</div>
 
           <div flex gap-3>
             <input
               v-model="newName"
               type="text"
-              placeholder="Enter new name"
+              placeholder="输入新名字"
               bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 flex-1
               focus:outline-none focus:border-neutral-500
             >
@@ -234,20 +234,20 @@ function clearMessages() {
               :disabled="loading || !newName.trim() || newName === currentUser?.name"
               @click="updateName"
             >
-              Update
+              更新
             </button>
           </div>
         </div>
 
         <!-- Auto Signin -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
-          <div text-lg font-bold mb-4>Auto Signin</div>
+          <div text-lg font-bold mb-4>自动签到</div>
 
           <label flex items-center justify-between cursor-pointer>
             <div>
-              <div text-sm font-medium>Enable Auto Signin</div>
+              <div text-sm font-medium>启用自动签到</div>
               <div text-xs text-neutral-500 mt-1>
-                Automatically sign in when others scan QR codes
+                当其他人扫码时自动为你签到
               </div>
             </div>
             <input
@@ -260,11 +260,11 @@ function clearMessages() {
 
         <!-- Update Cookie -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
-          <div text-lg font-bold mb-4>Update Cookie</div>
+          <div text-lg font-bold mb-4>更新 Cookie</div>
 
           <textarea
             v-model="newCookie"
-            placeholder="Paste new cookie here"
+            placeholder="在此粘贴新的 Cookie"
             bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 w-full
             rows="6"
             font-mono text-sm
@@ -276,15 +276,15 @@ function clearMessages() {
             :disabled="loading || !newCookie.trim()"
             @click="updateCookie"
           >
-            Update Cookie
+            更新 Cookie
           </button>
         </div>
 
         <!-- Delete Account -->
         <div bg-neutral-800 border-1 border-red-900 border-opacity-50 rounded-lg p-6>
-          <div text-lg font-bold mb-2 text-red-400>Danger Zone</div>
+          <div text-lg font-bold mb-2 text-red-400>危险区</div>
           <div text-sm text-neutral-400 mb-4>
-            Once you delete your account, there is no going back. Please be certain.
+            一旦删除账号，将无法恢复。请确认你的操作。
           </div>
 
           <button
@@ -292,7 +292,7 @@ function clearMessages() {
             @click="showDeleteConfirm = true"
           >
             <div i-carbon-trash-can inline-block mr-2 />
-            Delete Account
+            删除账号
           </button>
         </div>
       </div>
@@ -303,10 +303,10 @@ function clearMessages() {
         fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-6
       >
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6 max-w-md w-full>
-          <div text-xl font-bold mb-4>Confirm Delete</div>
+          <div text-xl font-bold mb-4>确认删除</div>
 
           <div text-sm text-neutral-300 mb-6>
-            Are you sure you want to delete your account? This action cannot be undone.
+            你确定要删除你的账号吗？此操作无法撤销。
           </div>
 
           <div flex gap-3>
@@ -314,14 +314,14 @@ function clearMessages() {
               flex-1 bg-neutral-700 hover:bg-neutral-600 px-4 py-3 rounded
               @click="showDeleteConfirm = false"
             >
-              Cancel
+              取消
             </button>
             <button
               flex-1 bg-red-900 hover:bg-red-800 text-red-200 px-4 py-3 rounded
               :disabled="loading"
               @click="deleteAccount"
             >
-              {{ loading ? 'Deleting...' : 'Delete' }}
+              {{ loading ? '删除中...' : '删除' }}
             </button>
           </div>
         </div>
