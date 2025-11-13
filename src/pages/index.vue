@@ -136,7 +136,7 @@ async function handleScanResult(result: string) {
 
   try {
     loading.value = true
-    const response = await signin(result, userStore.userId)
+    const response = await signin(result)
     scanResult.value = response
     await loadMainData()
   }
@@ -167,6 +167,33 @@ function goToHistory() {
 // Get user name by id
 function getUserName(userId: string): string {
   return userMap.value.get(userId) || '未知用户'
+}
+
+// Debug: use last scan result from backend
+async function debugWithLastResult() {
+  stopScanning()
+  showScanner.value = false
+
+  try {
+    loading.value = true
+    // Fetch the most recent scan result from backend
+    const lastScans = await getScanHistory(1)
+    if (lastScans.length === 0) {
+      error.value = '没有历史扫描记录'
+      return
+    }
+    
+    const lastScanResult = lastScans[0].result
+    const response = await signin(lastScanResult)
+    scanResult.value = response
+    await loadMainData()
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '签到失败'
+  }
+  finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -376,20 +403,40 @@ function getUserName(userId: string): string {
       <div max-w-2xl w-full>
         <div flex items-center justify-between mb-4>
           <div text-xl font-bold>扫描二维码</div>
-          <button
-            bg-neutral-800 hover:bg-neutral-700 p-2 rounded
-            @click="closeScanner"
-          >
-            <div i-carbon-close text-xl />
-          </button>
+          <div flex items-center gap-2>
+            <button
+              bg-yellow-700 hover:bg-yellow-600 px-3 py-2 rounded text-sm flex items-center gap-1
+              :disabled="loading"
+              @click="debugWithLastResult"
+            >
+              <div i-carbon-debug text-base />
+              <span>调试</span>
+            </button>
+            <button
+              bg-neutral-800 hover:bg-neutral-700 p-2 rounded
+              @click="closeScanner"
+            >
+              <div i-carbon-close text-xl />
+            </button>
+          </div>
         </div>
 
-        <div bg-neutral-900 rounded-lg overflow-hidden>
+        <div bg-neutral-900 rounded-lg overflow-hidden relative>
           <video ref="videoElement" w-full h-auto />
+          
+          <!-- Loading Overlay -->
+          <div
+            v-if="loading"
+            absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center
+          >
+            <div i-carbon-circle-dash text-6xl text-orange-500 animate-spin />
+            <div text-lg text-white mt-4>正在处理签到...</div>
+          </div>
         </div>
 
         <div text-sm text-neutral-400 text-center mt-4>
-          将二维码放置在框内
+          <span v-if="!loading">将二维码放置在框内</span>
+          <span v-else>请稍候，正在为所有用户签到</span>
         </div>
       </div>
     </div>
