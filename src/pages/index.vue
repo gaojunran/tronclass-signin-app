@@ -398,8 +398,8 @@ async function debugWithLastResult() {
       v-if="showScanner"
       fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-6
     >
-      <div max-w-2xl w-full>
-        <div flex items-center justify-between mb-4>
+      <div max-w-2xl w-full max-h-70vh flex flex-col>
+        <div flex items-center justify-between mb-4 flex-shrink-0>
           <div text-xl font-bold>扫描二维码</div>
           <div flex items-center gap-2>
             <button
@@ -419,8 +419,8 @@ async function debugWithLastResult() {
           </div>
         </div>
 
-        <div bg-neutral-900 rounded-lg overflow-hidden relative>
-          <video ref="videoElement" w-full h-auto />
+        <div bg-neutral-900 rounded-lg overflow-hidden relative flex-shrink min-h-0>
+          <video ref="videoElement" w-full h-auto max-h-full object-contain />
           
           <!-- Loading Overlay -->
           <div
@@ -432,7 +432,7 @@ async function debugWithLastResult() {
           </div>
         </div>
 
-        <div text-sm text-neutral-400 text-center mt-4>
+        <div text-sm text-neutral-400 text-center mt-4 flex-shrink-0>
           <span v-if="!loading">将二维码放置在框内</span>
           <span v-else>请稍候，正在为所有用户签到</span>
         </div>

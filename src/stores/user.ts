@@ -31,6 +31,18 @@ export const useUserStore = defineStore('user', () => {
     userName.value = ''
   }
 
+  // Clear API endpoint
+  function clearApiEndpoint() {
+    apiEndpoint.value = ''
+  }
+
+  // Clear all data
+  function clearAll() {
+    userId.value = ''
+    userName.value = ''
+    apiEndpoint.value = ''
+  }
+
   return {
     userId,
     apiEndpoint,
@@ -39,6 +51,8 @@ export const useUserStore = defineStore('user', () => {
     setApiEndpoint,
     setUserName,
     clearUser,
+    clearApiEndpoint,
+    clearAll,
   }
 }, {
   persist: true, // Persist to localStorage

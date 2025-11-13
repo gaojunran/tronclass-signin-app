@@ -158,6 +158,18 @@ function clearMessages() {
   error.value = ''
   success.value = ''
 }
+
+// Logout
+function logout() {
+  userStore.clearUser()
+  router.push('/')
+}
+
+// Change API endpoint
+function changeApiEndpoint() {
+  userStore.clearAll()
+  router.push('/')
+}
 </script>
 
 <template>
@@ -291,6 +303,44 @@ function clearMessages() {
           </button>
         </div>
 
+        <!-- Logout & Change API -->
+        <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
+          <div text-lg font-bold mb-4>账号管理</div>
+
+          <div space-y-3>
+            <button
+              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2
+              @click="logout"
+            >
+              <div i-carbon-logout />
+              <span>退出登录</span>
+            </button>
+
+            <button
+              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2
+              @click="changeApiEndpoint"
+            >
+              <div i-carbon-settings-adjust />
+              <span>更换 API 端点</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- GitHub Link -->
+        <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
+          <div text-lg font-bold mb-4>关于</div>
+
+          <a
+            href="https://github.com/gaojunran/tronclass-signin-app"
+            target="_blank"
+            rel="noopener noreferrer"
+            bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
+          >
+            <div i-carbon-logo-github />
+            <span>查看 GitHub 仓库</span>
+          </a>
+        </div>
+
         <!-- Delete Account -->
         <div bg-neutral-800 border-1 border-red-900 border-opacity-50 rounded-lg p-6>
           <div text-lg font-bold mb-2 text-red-400>危险区</div>
@@ -299,11 +349,11 @@ function clearMessages() {
           </div>
 
           <button
-            bg-red-900 hover:bg-red-800 text-red-200 px-6 py-3 rounded
+            bg-red-900 hover:bg-red-800 text-red-200 px-6 py-3 rounded flex items-center justify-center gap-2
             @click="showDeleteConfirm = true"
           >
-            <div i-carbon-trash-can inline-block mr-2 />
-            删除账号
+            <div i-carbon-trash-can />
+            <span>删除账号</span>
           </button>
         </div>
       </div>
