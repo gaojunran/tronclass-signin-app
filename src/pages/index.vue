@@ -1,199 +1,194 @@
 <script setup lang="ts">
-import type { ScanHistory, SigninHistory, SigninResponse, UserWithCookie } from '~/types/index'
-import { formatRelativeTime } from '~/utils'
-import { getUserList, signin, getScanHistory, getSigninHistory } from '~/api'
-import { useQRScanner } from '~/composables/qrScanner'
+import type {
+  ScanHistory,
+  SigninHistory,
+  SigninResponse,
+  UserWithCookie,
+} from "~/types/index";
+import { formatRelativeTime } from "~/utils";
+import { getUserList, signin, getScanHistory, getSigninHistory } from "~/api";
+import { useQRScanner } from "~/composables/qrScanner";
 
 defineOptions({
-  name: 'IndexPage',
-})
+  name: "IndexPage",
+});
 
-const userStore = useUserStore()
-const router = useRouter()
+const userStore = useUserStore();
+const router = useRouter();
 
 // State
-const step = ref<'config' | 'select-user' | 'main'>('config')
-const apiUrl = ref('')
-const users = ref<UserWithCookie[]>([])
-const loading = ref(false)
-const error = ref('')
+const step = ref<"config" | "select-user" | "main">("config");
+const apiUrl = ref("");
+const users = ref<UserWithCookie[]>([]);
+const loading = ref(false);
+const error = ref("");
 
 // Recent scan history
-const recentScans = ref<ScanHistory[]>([])
-const lastSignin = ref<SigninHistory | null>(null)
+const recentScans = ref<ScanHistory[]>([]);
+const lastSignin = ref<SigninHistory | null>(null);
 
 // User map for displaying names
-const userMap = ref<Map<string, string>>(new Map())
+const userMap = ref<Map<string, string>>(new Map());
 
 // QR Scanner
-const showScanner = ref(false)
-const videoElement = ref<HTMLVideoElement | null>(null)
-const { startScanning, stopScanning, isScanning } = useQRScanner()
+const showScanner = ref(false);
+const videoElement = ref<HTMLVideoElement | null>(null);
+const { startScanning, stopScanning, isScanning } = useQRScanner();
 
 // Scan result display
-const scanResult = ref<SigninResponse | null>(null)
+const scanResult = ref<SigninResponse | null>(null);
 
 // Initialize
 onMounted(async () => {
   if (userStore.apiEndpoint) {
-    apiUrl.value = userStore.apiEndpoint
+    apiUrl.value = userStore.apiEndpoint;
     if (userStore.userId) {
-      step.value = 'main'
-      await loadMainData()
-    }
-    else {
-      step.value = 'select-user'
-      await loadUsers()
+      step.value = "main";
+      await loadMainData();
+    } else {
+      step.value = "select-user";
+      await loadUsers();
     }
   }
-})
+});
 
 // Load users
 async function loadUsers() {
   try {
-    loading.value = true
-    error.value = ''
-    users.value = await getUserList()
+    loading.value = true;
+    error.value = "";
+    users.value = await getUserList();
     // Build user map
-    userMap.value = new Map(users.value.map(u => [u.id, u.name]))
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '加载用户列表失败'
-  }
-  finally {
-    loading.value = false
+    userMap.value = new Map(users.value.map((u) => [u.id, u.name]));
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "加载用户列表失败";
+  } finally {
+    loading.value = false;
   }
 }
 
 // Set API endpoint
 async function setApiEndpoint() {
   if (!apiUrl.value.trim()) {
-    error.value = '请输入 API 端点 URL'
-    return
+    error.value = "请输入 API 端点 URL";
+    return;
   }
 
-  userStore.setApiEndpoint(apiUrl.value.trim())
-  step.value = 'select-user'
-  await loadUsers()
+  userStore.setApiEndpoint(apiUrl.value.trim());
+  step.value = "select-user";
+  await loadUsers();
 }
 
 // Select user
 function selectUser(user: UserWithCookie) {
-  userStore.setUserId(user.id)
-  userStore.setUserName(user.name)
-  step.value = 'main'
-  loadMainData()
+  userStore.setUserId(user.id);
+  userStore.setUserName(user.name);
+  step.value = "main";
+  loadMainData();
 }
 
 // Create new user
 function createNewUser() {
-  router.push('/create-user')
+  router.push("/create-user");
 }
 
 // Load main page data
 async function loadMainData() {
   try {
-    loading.value = true
+    loading.value = true;
     const [scans, signins, allUsers] = await Promise.all([
       getScanHistory(3),
       getSigninHistory(1, userStore.userId),
       getUserList(),
-    ])
-    recentScans.value = scans
-    lastSignin.value = signins.length > 0 ? signins[0] : null
+    ]);
+    recentScans.value = scans;
+    lastSignin.value = signins.length > 0 ? signins[0] : null;
     // Build user map
-    userMap.value = new Map(allUsers.map(u => [u.id, u.name]))
-  }
-  catch (err) {
-    console.error('加载数据失败:', err)
-  }
-  finally {
-    loading.value = false
+    userMap.value = new Map(allUsers.map((u) => [u.id, u.name]));
+  } catch (err) {
+    console.error("加载数据失败:", err);
+  } finally {
+    loading.value = false;
   }
 }
 
 // Start QR scanning
 async function startQRScan() {
-  showScanner.value = true
-  scanResult.value = null
-  await nextTick()
+  showScanner.value = true;
+  scanResult.value = null;
+  await nextTick();
 
   if (videoElement.value) {
-  try {
-    await startScanning(videoElement.value, handleScanResult)
-  }
-  catch (err) {
-    console.warn('无法启动摄像头，fallback到调试模式:', err)
-    // Fallback to debug mode using last scan result
-    await debugWithLastResult()
-  }
+    try {
+      await startScanning(videoElement.value, handleScanResult);
+    } catch (err) {
+      console.warn("无法启动摄像头，fallback到调试模式:", err);
+      // Fallback to debug mode using last scan result
+      await debugWithLastResult();
+    }
   }
 }
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  stopScanning()
-  showScanner.value = false
+  stopScanning();
+  showScanner.value = false;
 
   try {
-    loading.value = true
-    const response = await signin(result)
-    scanResult.value = response
-    await loadMainData()
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '签到失败'
-  }
-  finally {
-    loading.value = false
+    loading.value = true;
+    const response = await signin(result, userStore.userId);
+    scanResult.value = response;
+    await loadMainData();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "签到失败";
+  } finally {
+    loading.value = false;
   }
 }
 
 // Close scanner
 function closeScanner() {
-  stopScanning()
-  showScanner.value = false
+  stopScanning();
+  showScanner.value = false;
 }
 
 // Navigate to settings
 function goToSettings() {
-  router.push('/settings')
+  router.push("/settings");
 }
 
 // Navigate to history
 function goToHistory() {
-  router.push('/history')
+  router.push("/history");
 }
 
 // Get user name by id
 function getUserName(userId: string): string {
-  return userMap.value.get(userId) || '未知用户'
+  return userMap.value.get(userId) || "未知用户";
 }
 
 // Debug: use last scan result from backend
 async function debugWithLastResult() {
-  stopScanning()
-  showScanner.value = false
+  stopScanning();
+  showScanner.value = false;
 
   try {
-    loading.value = true
+    loading.value = true;
     // Fetch the most recent scan result from backend
-    const lastScans = await getScanHistory(1)
+    const lastScans = await getScanHistory(1);
     if (lastScans.length === 0) {
-      error.value = '没有历史扫描记录'
-      return
+      error.value = "没有历史扫描记录";
+      return;
     }
-    
-    const lastScanResult = lastScans[0].result
-    const response = await signin(lastScanResult, userStore.userId)
-    scanResult.value = response
-    await loadMainData()
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '签到失败'
-  }
-  finally {
-    loading.value = false
+
+    const lastScanResult = lastScans[0].result;
+    const response = await signin(lastScanResult, userStore.userId);
+    scanResult.value = response;
+    await loadMainData();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "签到失败";
+  } finally {
+    loading.value = false;
   }
 }
 </script>
@@ -202,7 +197,7 @@ async function debugWithLastResult() {
   <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
     <!-- Step 1: API Configuration -->
     <div v-if="step === 'config'" max-w-md mx-auto mt-20>
-      <div text-3xl font-bold mb-8>
+      <div text-3xl font-bold mb-8 flex items-center>
         <div i-carbon-qr-code inline-block mr-2 />
         畅课签到助手
       </div>
@@ -213,18 +208,30 @@ async function debugWithLastResult() {
           v-model="apiUrl"
           type="url"
           placeholder="https://api.example.com"
-          bg-neutral-800 border-1 border-neutral-700 rounded px-4 py-3 w-full
-          focus:outline-none focus:border-neutral-500
+          bg-neutral-800
+          border-1
+          border-neutral-700
+          rounded
+          px-4
+          py-3
+          w-full
+          focus:outline-none
+          focus:border-neutral-500
           @keydown.enter="setApiEndpoint"
-        >
+        />
       </div>
 
       <button
-        bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full
+        bg-neutral-700
+        hover:bg-neutral-600
+        px-6
+        py-3
+        rounded
+        w-full
         :disabled="loading"
         @click="setApiEndpoint"
       >
-        {{ loading ? '连接中...' : '继续' }}
+        {{ loading ? "连接中..." : "继续" }}
       </button>
 
       <div v-if="error" mt-4 text-red-400 text-sm>
@@ -234,9 +241,7 @@ async function debugWithLastResult() {
 
     <!-- Step 2: User Selection -->
     <div v-else-if="step === 'select-user'" max-w-2xl mx-auto mt-10>
-      <div text-2xl font-bold mb-6>
-        选择你的账号
-      </div>
+      <div text-2xl font-bold mb-6>选择你的账号</div>
 
       <div v-if="loading" text-center py-10>
         <div i-carbon-loading animate-spin text-4xl />
@@ -247,17 +252,25 @@ async function debugWithLastResult() {
           <div
             v-for="user in users"
             :key="user.id"
-            bg-neutral-800 hover:bg-neutral-750 border-1 border-neutral-700 rounded p-4 cursor-pointer
+            bg-neutral-800
+            hover:bg-neutral-750
+            border-1
+            border-neutral-700
+            rounded
+            p-4
+            cursor-pointer
             @click="selectUser(user)"
           >
             <div flex items-center justify-between>
               <div>
                 <div text-lg font-medium>{{ user.name }}</div>
                 <div text-sm text-neutral-400>
-                  自动签到：{{ user.is_auto ? '是' : '否' }}
+                  自动签到：{{ user.is_auto ? "是" : "否" }}
                 </div>
                 <div v-if="user.expires" text-xs text-neutral-500 mt-1>
-                  Cookie 过期时间：{{ new Date(user.expires).toLocaleDateString() }}
+                  Cookie 过期时间：{{
+                    new Date(user.expires).toLocaleDateString()
+                  }}
                 </div>
               </div>
               <div i-carbon-chevron-right text-xl text-neutral-500 />
@@ -266,7 +279,12 @@ async function debugWithLastResult() {
         </div>
 
         <button
-          bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full
+          bg-neutral-700
+          hover:bg-neutral-600
+          px-6
+          py-3
+          rounded
+          w-full
           @click="createNewUser"
         >
           <div i-carbon-add inline-block mr-2 />
@@ -286,11 +304,18 @@ async function debugWithLastResult() {
         <div>
           <div text-2xl font-bold>欢迎，{{ userStore.userName }}</div>
           <div text-sm text-neutral-400 mt-1>
-            上次签到：{{ lastSignin ? formatRelativeTime(lastSignin.created_at) : '从未签到' }}
+            上次签到：{{
+              lastSignin
+                ? formatRelativeTime(lastSignin.created_at)
+                : "从未签到"
+            }}
           </div>
         </div>
         <button
-          bg-neutral-800 hover:bg-neutral-700 p-3 rounded
+          bg-neutral-800
+          hover:bg-neutral-700
+          p-3
+          rounded
           @click="goToSettings"
         >
           <div i-carbon-settings text-xl />
@@ -298,7 +323,15 @@ async function debugWithLastResult() {
       </div>
 
       <!-- Scan Result Display -->
-      <div v-if="scanResult" bg-neutral-800 border-1 border-neutral-700 rounded p-6 mb-6>
+      <div
+        v-if="scanResult"
+        bg-neutral-800
+        border-1
+        border-neutral-700
+        rounded
+        p-6
+        mb-6
+      >
         <div text-lg font-bold mb-4>
           <div i-carbon-checkmark-filled inline-block text-green-400 mr-2 />
           扫码完成
@@ -312,17 +345,26 @@ async function debugWithLastResult() {
         </div>
 
         <div>
-          <div text-sm text-neutral-400 mb-2>签到结果（{{ scanResult.signin_results.length }} 人）：</div>
+          <div text-sm text-neutral-400 mb-2>
+            签到结果（{{ scanResult.signin_results.length }} 人）：
+          </div>
           <div space-y-2>
             <div
               v-for="signinItem in scanResult.signin_results"
               :key="signinItem.id"
-              bg-neutral-900 p-3 rounded text-sm
+              bg-neutral-900
+              p-3
+              rounded
+              text-sm
             >
               <div flex items-center justify-between>
                 <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
                 <div
-                  :class="signinItem.response_code === 200 ? 'text-green-400' : 'text-red-400'"
+                  :class="
+                    signinItem.response_code === 200
+                      ? 'text-green-400'
+                      : 'text-red-400'
+                  "
                 >
                   {{ signinItem.response_code }}
                 </div>
@@ -332,7 +374,13 @@ async function debugWithLastResult() {
         </div>
 
         <button
-          mt-4 bg-neutral-700 hover:bg-neutral-600 px-4 py-2 rounded text-sm
+          mt-4
+          bg-neutral-700
+          hover:bg-neutral-600
+          px-4
+          py-2
+          rounded
+          text-sm
           @click="scanResult = null"
         >
           关闭
@@ -341,12 +389,24 @@ async function debugWithLastResult() {
 
       <!-- Scan Button -->
       <button
-        bg-orange-600 hover:bg-orange-500 text-white px-8 py-4 rounded-lg text-lg font-medium w-full mb-8 flex items-center justify-center
+        bg-orange-600
+        hover:bg-orange-500
+        text-white
+        px-8
+        py-4
+        rounded-lg
+        text-lg
+        font-medium
+        w-full
+        mb-8
+        flex
+        items-center
+        justify-center
         :disabled="loading || isScanning"
         @click="startQRScan"
       >
         <div i-carbon-qr-code mr-2 text-2xl />
-        <span>{{ isScanning ? '扫码中...' : '扫码签到' }}</span>
+        <span>{{ isScanning ? "扫码中..." : "扫码签到" }}</span>
       </button>
 
       <!-- Recent Scans -->
@@ -354,7 +414,12 @@ async function debugWithLastResult() {
         <div flex items-center justify-between mb-4>
           <div text-lg font-bold>最近扫码</div>
           <button
-            text-sm text-neutral-400 hover:text-neutral-200 flex items-center gap-1
+            text-sm
+            text-neutral-400
+            hover:text-neutral-200
+            flex
+            items-center
+            gap-1
             @click="goToHistory"
           >
             <span>查看全部</span>
@@ -370,7 +435,11 @@ async function debugWithLastResult() {
           <div
             v-for="scan in recentScans"
             :key="scan.id"
-            bg-neutral-800 border-1 border-neutral-700 rounded p-4
+            bg-neutral-800
+            border-1
+            border-neutral-700
+            rounded
+            p-4
           >
             <div flex items-start justify-between>
               <div flex-1 mr-4>
@@ -388,7 +457,17 @@ async function debugWithLastResult() {
       </div>
 
       <!-- Error Display -->
-      <div v-if="error" bg-red-900 bg-opacity-20 border-1 border-red-700 rounded p-4 text-red-400 text-sm>
+      <div
+        v-if="error"
+        bg-red-900
+        bg-opacity-20
+        border-1
+        border-red-700
+        rounded
+        p-4
+        text-red-400
+        text-sm
+      >
         {{ error }}
       </div>
     </div>
@@ -396,14 +475,30 @@ async function debugWithLastResult() {
     <!-- QR Scanner Modal -->
     <div
       v-if="showScanner"
-      fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-6
+      fixed
+      inset-0
+      bg-black
+      bg-opacity-90
+      z-50
+      flex
+      items-center
+      justify-center
+      p-6
     >
       <div max-w-2xl w-full flex flex-col>
         <div flex items-center justify-between mb-4 flex-shrink-0>
           <div text-xl font-bold>扫描二维码</div>
           <div flex items-center gap-2>
             <button
-              bg-yellow-700 hover:bg-yellow-600 px-3 py-2 rounded text-sm flex items-center gap-1
+              bg-yellow-700
+              hover:bg-yellow-600
+              px-3
+              py-2
+              rounded
+              text-sm
+              flex
+              items-center
+              gap-1
               :disabled="loading"
               @click="debugWithLastResult"
             >
@@ -411,7 +506,10 @@ async function debugWithLastResult() {
               <span>调试</span>
             </button>
             <button
-              bg-neutral-800 hover:bg-neutral-700 p-2 rounded
+              bg-neutral-800
+              hover:bg-neutral-700
+              p-2
+              rounded
               @click="closeScanner"
             >
               <div i-carbon-close text-xl />
@@ -419,13 +517,27 @@ async function debugWithLastResult() {
           </div>
         </div>
 
-        <div bg-neutral-900 rounded-lg overflow-hidden relative flex-shrink min-h-0>
+        <div
+          bg-neutral-900
+          rounded-lg
+          overflow-hidden
+          relative
+          flex-shrink
+          min-h-0
+        >
           <video ref="videoElement" w-full h-auto max-h-70vh object-contain />
-          
+
           <!-- Loading Overlay -->
           <div
             v-if="loading"
-            absolute inset-0 bg-black bg-opacity-80 flex flex-col items-center justify-center
+            absolute
+            inset-0
+            bg-black
+            bg-opacity-80
+            flex
+            flex-col
+            items-center
+            justify-center
           >
             <div i-carbon-circle-dash text-6xl text-orange-500 animate-spin />
             <div text-lg text-white mt-4>正在处理签到...</div>
