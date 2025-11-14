@@ -132,10 +132,9 @@ async function startQRScan() {
 // Handle scan result
 async function handleScanResult(result: string) {
   stopScanning();
-  showScanner.value = false;
+  loading.value = true;
 
   try {
-    loading.value = true;
     const response = await signin(result, userStore.userId);
     scanResult.value = response;
     await loadMainData();
@@ -143,6 +142,7 @@ async function handleScanResult(result: string) {
     error.value = err instanceof Error ? err.message : "签到失败";
   } finally {
     loading.value = false;
+    showScanner.value = false;
   }
 }
 
@@ -170,14 +170,15 @@ function getUserName(userId: string): string {
 // Debug: use last scan result from backend
 async function debugWithLastResult() {
   stopScanning();
-  showScanner.value = false;
+  loading.value = true;
 
   try {
-    loading.value = true;
     // Fetch the most recent scan result from backend
     const lastScans = await getScanHistory(1);
     if (lastScans.length === 0) {
       error.value = "没有历史扫描记录";
+      loading.value = false;
+      showScanner.value = false;
       return;
     }
 
@@ -189,6 +190,7 @@ async function debugWithLastResult() {
     error.value = err instanceof Error ? err.message : "签到失败";
   } finally {
     loading.value = false;
+    showScanner.value = false;
   }
 }
 </script>
@@ -332,8 +334,8 @@ async function debugWithLastResult() {
         p-6
         mb-6
       >
-        <div text-lg font-bold mb-4>
-          <div i-carbon-checkmark-filled inline-block text-green-400 mr-2 />
+        <div text-lg font-bold mb-4 flex items-center>
+          <div i-carbon-checkmark-filled text-green-400 mr-2 />
           扫码完成
         </div>
 

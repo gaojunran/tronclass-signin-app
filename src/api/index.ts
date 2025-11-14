@@ -173,17 +173,20 @@ export async function signin(scan_result: string, user_id: string): Promise<Sign
 
 /**
  * Get sign-in history
- * GET /history/signin?count=<count>&user_id=<id>
+ * GET /history/signin?count=<count>&user_id=<id>&index=<index>
  */
 export async function getSigninHistory(
   count?: number,
   user_id?: string,
+  index?: number,
 ): Promise<SigninHistory[]> {
   const params = new URLSearchParams()
   if (count !== undefined)
     params.append('count', count.toString())
   if (user_id)
     params.append('user_id', user_id)
+  if (index !== undefined)
+    params.append('index', index.toString())
 
   const query = params.toString() ? `?${params.toString()}` : ''
   return fetchAPI<SigninHistory[]>(`/history/signin${query}`)
@@ -191,17 +194,20 @@ export async function getSigninHistory(
 
 /**
  * Get scan history
- * GET /history/scan?count=<count>&user_id=<id>
+ * GET /history/scan?count=<count>&user_id=<id>&index=<index>
  */
 export async function getScanHistory(
   count?: number,
   user_id?: string,
+  index?: number,
 ): Promise<ScanHistory[]> {
   const params = new URLSearchParams()
   if (count !== undefined)
     params.append('count', count.toString())
   if (user_id)
     params.append('user_id', user_id)
+  if (index !== undefined)
+    params.append('index', index.toString())
 
   const query = params.toString() ? `?${params.toString()}` : ''
   return fetchAPI<ScanHistory[]>(`/history/scan${query}`)

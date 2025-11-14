@@ -22,11 +22,6 @@ async function createUser() {
     return
   }
 
-  if (!cookie.value.trim()) {
-    error.value = '请输入 Cookie'
-    return
-  }
-
   try {
     loading.value = true
     error.value = ''
@@ -46,8 +41,10 @@ async function createUser() {
       })
     }
 
-    // Step 3: Refresh cookie
-    await refreshUserCookie(id, cookie.value.trim())
+    // Step 3: Refresh cookie (only if provided)
+    if (cookie.value.trim()) {
+      await refreshUserCookie(id, cookie.value.trim())
+    }
 
     // Save to store
     userStore.setUserId(id)
@@ -152,11 +149,11 @@ function goBack() {
         <!-- Cookie -->
         <div mb-6>
           <label text-sm text-neutral-400 mb-2 block>
-            Cookie <span text-red-400>*</span>
+            Cookie <span text-neutral-500>(可选)</span>
           </label>
           <textarea
             v-model="cookie"
-            placeholder="在此粘贴你的 Cookie"
+            placeholder="在此粘贴你的 Cookie（可以稍后在设置页面添加）"
             bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 w-full
             rows="6"
             font-mono text-sm
@@ -164,7 +161,7 @@ function goBack() {
           />
           <div text-xs text-neutral-500 mt-2>
             <div i-carbon-information inline-block mr-1 />
-            从浏览器开发者工具中复制 Cookie
+            从浏览器开发者工具中复制 Cookie，也可以稍后再填
           </div>
         </div>
 

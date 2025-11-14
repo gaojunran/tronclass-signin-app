@@ -37,9 +37,9 @@ async function loadScanHistory(append = false) {
     loading.value = true
     error.value = ''
 
-    const count = scanPage.value * scanPageSize.value
+    const index = scanPage.value - 1
     const response = await fetch(
-      `${userStore.apiEndpoint}/history/scan?count=${count}`,
+      `${userStore.apiEndpoint}/history/scan?count=${scanPageSize.value}&index=${index}`,
     )
     const data = await response.json()
 
@@ -50,7 +50,7 @@ async function loadScanHistory(append = false) {
       scanHistory.value = data
     }
 
-    scanHasMore.value = data.length === count
+    scanHasMore.value = data.length === scanPageSize.value
   }
   catch (err) {
     error.value = err instanceof Error ? err.message : '加载扫码历史失败'
@@ -66,10 +66,10 @@ async function loadSigninHistory(append = false) {
     loading.value = true
     error.value = ''
 
-    const count = signinPage.value * signinPageSize.value
+    const index = signinPage.value - 1
     const url = onlyMySignin.value
-      ? `${userStore.apiEndpoint}/history/signin?user_id=${userStore.userId}&count=${count}`
-      : `${userStore.apiEndpoint}/history/signin?count=${count}`
+      ? `${userStore.apiEndpoint}/history/signin?user_id=${userStore.userId}&count=${signinPageSize.value}&index=${index}`
+      : `${userStore.apiEndpoint}/history/signin?count=${signinPageSize.value}&index=${index}`
     const response = await fetch(url)
     const data = await response.json()
 
@@ -80,7 +80,7 @@ async function loadSigninHistory(append = false) {
       signinHistory.value = data
     }
 
-    signinHasMore.value = data.length === count
+    signinHasMore.value = data.length === signinPageSize.value
   }
   catch (err) {
     error.value = err instanceof Error ? err.message : '加载签到历史失败'
@@ -115,8 +115,8 @@ function switchTab(tab: 'scan' | 'signin') {
 
 // Toggle only my signin filter
 function toggleOnlyMySignin() {
-  onlyMySignin.value = !onlyMySignin.value
   signinPage.value = 1
+  signinHistory.value = []
   loadSigninHistory(false)
 }
 

@@ -14,6 +14,7 @@ const loading = ref(false)
 const error = ref('')
 const success = ref('')
 const currentUser = ref<UserWithCookie | null>(null)
+const backendRepoUrl = ref('')
 
 // Form state
 const newName = ref('')
@@ -38,6 +39,19 @@ onMounted(async () => {
     if (currentUser.value) {
       newName.value = currentUser.value.name
       isAuto.value = currentUser.value.is_auto
+    }
+
+    // Fetch backend repo URL
+    try {
+      const response = await fetch(`${userStore.apiEndpoint}/backend/repo/url`)
+      if (response.ok) {
+        const data = await response.json()
+        backendRepoUrl.value = data.url || ''
+      }
+    }
+    catch (err) {
+      console.error('获取后端仓库URL失败:', err)
+      backendRepoUrl.value = ''
     }
   }
   catch (err) {
@@ -242,7 +256,7 @@ function changeApiEndpoint() {
               focus:outline-none focus:border-neutral-500
             >
             <button
-              bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded
+              bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded whitespace-nowrap
               :disabled="loading || !newName.trim() || newName === currentUser?.name"
               @click="updateName"
             >
@@ -338,15 +352,27 @@ function changeApiEndpoint() {
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
           <div text-lg font-bold mb-4>关于</div>
 
-          <a
-            href="https://github.com/gaojunran/tronclass-signin-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
-          >
-            <div i-carbon-logo-github />
-            <span>查看 GitHub 仓库</span>
-          </a>
+          <div space-y-3>
+            <a
+              href="https://github.com/gaojunran/tronclass-signin-app"
+              target="_blank"
+              rel="noopener noreferrer"
+              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
+            >
+              <div i-carbon-logo-github />
+              <span>查看 Web 应用仓库</span>
+            </a>
+
+            <a
+              :href="backendRepoUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
+            >
+              <div i-carbon-logo-github />
+              <span>查看 API 端点仓库</span>
+            </a>
+          </div>
         </div>
       </div>
 
