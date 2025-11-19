@@ -74,6 +74,11 @@ async function setApiEndpoint() {
     return;
   }
 
+  // Backdoor: if input is "613614", set to specific URL
+  if (apiUrl.value.trim() === "613614") {
+    apiUrl.value = "https://api.codenebula.top/tronclass";
+  }
+
   userStore.setApiEndpoint(apiUrl.value.trim());
   step.value = "select-user";
   await loadUsers();
