@@ -1,188 +1,183 @@
 <script setup lang="ts">
-import type { UserWithCookie } from '~/types/index'
-import { getUserList, refreshUserCookie, removeUser, renameUser, updateUserAuto } from '~/api'
+import type { UserWithCookie } from "~/types/index";
+import {
+  getUserList,
+  refreshUserCookie,
+  removeUser,
+  renameUser,
+  updateUserAuto,
+} from "~/api";
 
 defineOptions({
-  name: 'SettingsPage',
-})
+  name: "SettingsPage",
+});
 
-const userStore = useUserStore()
-const router = useRouter()
+const userStore = useUserStore();
+const router = useRouter();
 
 // State
-const loading = ref(false)
-const error = ref('')
-const success = ref('')
-const currentUser = ref<UserWithCookie | null>(null)
-const backendRepoUrl = ref('')
+const loading = ref(false);
+const error = ref("");
+const success = ref("");
+const currentUser = ref<UserWithCookie | null>(null);
+const backendRepoUrl = ref("");
 
 // Form state
-const newName = ref('')
-const newCookie = ref('')
-const isAuto = ref(true)
+const newName = ref("");
+const newCookie = ref("");
+const isAuto = ref(true);
 
 // Confirmation dialogs
-const showDeleteConfirm = ref(false)
+const showDeleteConfirm = ref(false);
 
 // Load current user data
 onMounted(async () => {
   if (!userStore.userId) {
-    router.push('/')
-    return
+    router.push("/");
+    return;
   }
 
   try {
-    loading.value = true
-    const users = await getUserList()
-    currentUser.value = users.find(u => u.id === userStore.userId) || null
+    loading.value = true;
+    const users = await getUserList();
+    currentUser.value = users.find((u) => u.id === userStore.userId) || null;
 
     if (currentUser.value) {
-      newName.value = currentUser.value.name
-      isAuto.value = currentUser.value.is_auto
+      newName.value = currentUser.value.name;
+      isAuto.value = currentUser.value.is_auto;
     }
 
     // Fetch backend repo URL
     try {
-      const response = await fetch(`${userStore.apiEndpoint}/backend/repo/url`)
+      const response = await fetch(`${userStore.apiEndpoint}/backend/repo/url`);
       if (response.ok) {
-        const data = await response.json()
-        backendRepoUrl.value = data.url || ''
+        const data = await response.text();
+        backendRepoUrl.value = data;
       }
+    } catch (err) {
+      console.error("获取后端仓库URL失败:", err);
+      backendRepoUrl.value = "";
     }
-    catch (err) {
-      console.error('获取后端仓库URL失败:', err)
-      backendRepoUrl.value = ''
-    }
+  } catch (err) {
+    error.value = "加载用户数据失败";
+  } finally {
+    loading.value = false;
   }
-  catch (err) {
-    error.value = '加载用户数据失败'
-  }
-  finally {
-    loading.value = false
-  }
-})
+});
 
 // Update name
 async function updateName() {
   if (!newName.value.trim() || newName.value === currentUser.value?.name) {
-    return
+    return;
   }
 
   try {
-    loading.value = true
-    error.value = ''
-    success.value = ''
+    loading.value = true;
+    error.value = "";
+    success.value = "";
 
-    await renameUser(userStore.userId, newName.value.trim())
-    userStore.setUserName(newName.value.trim())
+    await renameUser(userStore.userId, newName.value.trim());
+    userStore.setUserName(newName.value.trim());
 
     if (currentUser.value) {
-      currentUser.value.name = newName.value.trim()
+      currentUser.value.name = newName.value.trim();
     }
 
-    success.value = '名字修改成功'
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '修改名字失败'
-  }
-  finally {
-    loading.value = false
+    success.value = "名字修改成功";
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "修改名字失败";
+  } finally {
+    loading.value = false;
   }
 }
 
 // Update auto signin
 async function updateAutoSignin() {
   try {
-    loading.value = true
-    error.value = ''
-    success.value = ''
+    loading.value = true;
+    error.value = "";
+    success.value = "";
 
-    await updateUserAuto(userStore.userId, isAuto.value)
+    await updateUserAuto(userStore.userId, isAuto.value);
 
     if (currentUser.value) {
-      currentUser.value.is_auto = isAuto.value
+      currentUser.value.is_auto = isAuto.value;
     }
 
-    success.value = '自动签到设置已更新'
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '更新设置失败'
-  }
-  finally {
-    loading.value = false
+    success.value = "自动签到设置已更新";
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "更新设置失败";
+  } finally {
+    loading.value = false;
   }
 }
 
 // Update cookie
 async function updateCookie() {
   if (!newCookie.value.trim()) {
-    error.value = '请输入 Cookie'
-    return
+    error.value = "请输入 Cookie";
+    return;
   }
 
   try {
-    loading.value = true
-    error.value = ''
-    success.value = ''
+    loading.value = true;
+    error.value = "";
+    success.value = "";
 
-    await refreshUserCookie(userStore.userId, newCookie.value.trim())
+    await refreshUserCookie(userStore.userId, newCookie.value.trim());
 
-    success.value = 'Cookie 更新成功'
-    newCookie.value = ''
+    success.value = "Cookie 更新成功";
+    newCookie.value = "";
 
     // Reload user data
-    const users = await getUserList()
-    currentUser.value = users.find(u => u.id === userStore.userId) || null
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '更新 Cookie 失败'
-  }
-  finally {
-    loading.value = false
+    const users = await getUserList();
+    currentUser.value = users.find((u) => u.id === userStore.userId) || null;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "更新 Cookie 失败";
+  } finally {
+    loading.value = false;
   }
 }
 
 // Delete account
 async function deleteAccount() {
   try {
-    loading.value = true
-    error.value = ''
+    loading.value = true;
+    error.value = "";
 
-    await removeUser(userStore.userId)
+    await removeUser(userStore.userId);
 
-    userStore.clearUser()
-    router.push('/')
-  }
-  catch (err) {
-    error.value = err instanceof Error ? err.message : '删除账号失败'
-    showDeleteConfirm.value = false
-  }
-  finally {
-    loading.value = false
+    userStore.clearUser();
+    router.push("/");
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "删除账号失败";
+    showDeleteConfirm.value = false;
+  } finally {
+    loading.value = false;
   }
 }
 
 // Go back
 function goBack() {
-  router.back()
+  router.back();
 }
 
 // Clear messages
 function clearMessages() {
-  error.value = ''
-  success.value = ''
+  error.value = "";
+  success.value = "";
 }
 
 // Logout
 function logout() {
-  userStore.clearUser()
-  router.push('/')
+  userStore.clearUser();
+  router.push("/");
 }
 
 // Change API endpoint
 function changeApiEndpoint() {
-  userStore.clearAll()
-  router.push('/')
+  userStore.clearAll();
+  router.push("/");
 }
 </script>
 
@@ -192,7 +187,11 @@ function changeApiEndpoint() {
       <!-- Header -->
       <div flex items-center mb-8>
         <button
-          bg-neutral-800 hover:bg-neutral-700 p-2 rounded mr-4
+          bg-neutral-800
+          hover:bg-neutral-700
+          p-2
+          rounded
+          mr-4
           @click="goBack"
         >
           <div i-carbon-arrow-left text-xl />
@@ -208,18 +207,34 @@ function changeApiEndpoint() {
       <!-- Content -->
       <div v-else space-y-6>
         <!-- Messages -->
-        <div v-if="error" bg-red-900 bg-opacity-20 border-1 border-red-700 rounded p-4 text-red-400 text-sm>
+        <div
+          v-if="error"
+          bg-red-900
+          bg-opacity-20
+          border-1
+          border-red-700
+          rounded
+          p-4
+          text-red-400
+          text-sm
+        >
           {{ error }}
-          <button ml-2 text-xs underline @click="clearMessages">
-            关闭
-          </button>
+          <button ml-2 text-xs underline @click="clearMessages">关闭</button>
         </div>
 
-        <div v-if="success" bg-green-900 bg-opacity-20 border-1 border-green-700 rounded p-4 text-green-400 text-sm>
+        <div
+          v-if="success"
+          bg-green-900
+          bg-opacity-20
+          border-1
+          border-green-700
+          rounded
+          p-4
+          text-green-400
+          text-sm
+        >
           {{ success }}
-          <button ml-2 text-xs underline @click="clearMessages">
-            关闭
-          </button>
+          <button ml-2 text-xs underline @click="clearMessages">关闭</button>
         </div>
 
         <!-- User Info -->
@@ -252,12 +267,26 @@ function changeApiEndpoint() {
               v-model="newName"
               type="text"
               placeholder="输入新名字"
-              bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 flex-1
-              focus:outline-none focus:border-neutral-500
-            >
+              bg-neutral-900
+              border-1
+              border-neutral-700
+              rounded
+              px-4
+              py-3
+              flex-1
+              focus:outline-none
+              focus:border-neutral-500
+            />
             <button
-              bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded whitespace-nowrap
-              :disabled="loading || !newName.trim() || newName === currentUser?.name"
+              bg-orange-600
+              hover:bg-orange-500
+              px-6
+              py-3
+              rounded
+              whitespace-nowrap
+              :disabled="
+                loading || !newName.trim() || newName === currentUser?.name
+              "
               @click="updateName"
             >
               更新
@@ -282,7 +311,7 @@ function changeApiEndpoint() {
                 type="checkbox"
                 class="peer sr-only"
                 @change="updateAutoSignin"
-              >
+              />
               <div
                 class="peer absolute inset-0 rounded-full transition-colors"
                 :class="isAuto ? 'bg-orange-600' : 'bg-neutral-700'"
@@ -302,14 +331,28 @@ function changeApiEndpoint() {
           <textarea
             v-model="newCookie"
             placeholder="在此粘贴新的 Cookie"
-            bg-neutral-900 border-1 border-neutral-700 rounded px-4 py-3 w-full
+            bg-neutral-900
+            border-1
+            border-neutral-700
+            rounded
+            px-4
+            py-3
+            w-full
             rows="6"
-            font-mono text-sm
-            focus:outline-none focus:border-neutral-500
+            font-mono
+            text-sm
+            focus:outline-none
+            focus:border-neutral-500
           />
 
           <button
-            mt-3 bg-orange-600 hover:bg-orange-500 px-6 py-3 rounded w-full
+            mt-3
+            bg-orange-600
+            hover:bg-orange-500
+            px-6
+            py-3
+            rounded
+            w-full
             :disabled="loading || !newCookie.trim()"
             @click="updateCookie"
           >
@@ -323,7 +366,16 @@ function changeApiEndpoint() {
 
           <div space-y-3>
             <button
-              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2
+              bg-neutral-700
+              hover:bg-neutral-600
+              px-6
+              py-3
+              rounded
+              w-full
+              flex
+              items-center
+              justify-center
+              gap-2
               @click="logout"
             >
               <div i-carbon-logout />
@@ -331,7 +383,16 @@ function changeApiEndpoint() {
             </button>
 
             <button
-              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2
+              bg-neutral-700
+              hover:bg-neutral-600
+              px-6
+              py-3
+              rounded
+              w-full
+              flex
+              items-center
+              justify-center
+              gap-2
               @click="changeApiEndpoint"
             >
               <div i-carbon-settings-adjust />
@@ -339,12 +400,22 @@ function changeApiEndpoint() {
             </button>
 
             <button
-            bg-red-900 hover:bg-red-800 text-red-200 px-6 py-3 rounded w-full flex items-center justify-center gap-2
-            @click="showDeleteConfirm = true"
-          >
-            <div i-carbon-trash-can />
-            <span>删除账号</span>
-          </button>
+              bg-red-900
+              hover:bg-red-800
+              text-red-200
+              px-6
+              py-3
+              rounded
+              w-full
+              flex
+              items-center
+              justify-center
+              gap-2
+              @click="showDeleteConfirm = true"
+            >
+              <div i-carbon-trash-can />
+              <span>删除账号</span>
+            </button>
           </div>
         </div>
 
@@ -357,7 +428,18 @@ function changeApiEndpoint() {
               href="https://github.com/gaojunran/tronclass-signin-app"
               target="_blank"
               rel="noopener noreferrer"
-              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
+              bg-neutral-700
+              hover:bg-neutral-600
+              px-6
+              py-3
+              rounded
+              w-full
+              flex
+              items-center
+              justify-center
+              gap-2
+              text-neutral-100
+              no-underline
             >
               <div i-carbon-logo-github />
               <span>查看 Web 应用仓库</span>
@@ -367,7 +449,18 @@ function changeApiEndpoint() {
               :href="backendRepoUrl"
               target="_blank"
               rel="noopener noreferrer"
-              bg-neutral-700 hover:bg-neutral-600 px-6 py-3 rounded w-full flex items-center justify-center gap-2 text-neutral-100 no-underline
+              bg-neutral-700
+              hover:bg-neutral-600
+              px-6
+              py-3
+              rounded
+              w-full
+              flex
+              items-center
+              justify-center
+              gap-2
+              text-neutral-100
+              no-underline
             >
               <div i-carbon-logo-github />
               <span>查看 API 端点仓库</span>
@@ -379,9 +472,25 @@ function changeApiEndpoint() {
       <!-- Delete Confirmation Modal -->
       <div
         v-if="showDeleteConfirm"
-        fixed inset-0 bg-black bg-opacity-80 z-50 flex items-center justify-center p-6
+        fixed
+        inset-0
+        bg-black
+        bg-opacity-80
+        z-50
+        flex
+        items-center
+        justify-center
+        p-6
       >
-        <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6 max-w-md w-full>
+        <div
+          bg-neutral-800
+          border-1
+          border-neutral-700
+          rounded-lg
+          p-6
+          max-w-md
+          w-full
+        >
           <div text-xl font-bold mb-4>确认删除</div>
 
           <div text-sm text-neutral-300 mb-6>
@@ -390,17 +499,28 @@ function changeApiEndpoint() {
 
           <div flex gap-3>
             <button
-              flex-1 bg-neutral-700 hover:bg-neutral-600 px-4 py-3 rounded
+              flex-1
+              bg-neutral-700
+              hover:bg-neutral-600
+              px-4
+              py-3
+              rounded
               @click="showDeleteConfirm = false"
             >
               取消
             </button>
             <button
-              flex-1 bg-red-900 hover:bg-red-800 text-red-200 px-4 py-3 rounded
+              flex-1
+              bg-red-900
+              hover:bg-red-800
+              text-red-200
+              px-4
+              py-3
+              rounded
               :disabled="loading"
               @click="deleteAccount"
             >
-              {{ loading ? '删除中...' : '删除' }}
+              {{ loading ? "删除中..." : "删除" }}
             </button>
           </div>
         </div>
