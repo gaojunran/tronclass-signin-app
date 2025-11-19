@@ -179,6 +179,19 @@ function changeApiEndpoint() {
   userStore.clearAll();
   router.push("/");
 }
+
+// Generate share link
+function generateShareLink() {
+  const shareUrl = `${window.location.origin}/share?endpoint=${encodeURIComponent(userStore.apiEndpoint)}&user_id=${encodeURIComponent(userStore.userId)}`;
+  
+  // Copy to clipboard
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    success.value = "分享链接已复制到剪贴板";
+  }).catch((err) => {
+    error.value = "复制失败，请手动复制";
+    console.error("复制失败:", err);
+  });
+}
 </script>
 
 <template>
@@ -357,6 +370,32 @@ function changeApiEndpoint() {
             @click="updateCookie"
           >
             更新 Cookie
+          </button>
+        </div>
+
+        <!-- Share Link -->
+        <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
+          <div text-lg font-bold mb-4>分享链接</div>
+
+          <div text-sm text-neutral-400 mb-3>
+            生成一个链接，让别人可以代你签到
+          </div>
+
+          <button
+            bg-orange-600
+            hover:bg-orange-500
+            px-6
+            py-3
+            rounded
+            w-full
+            flex
+            items-center
+            justify-center
+            gap-2
+            @click="generateShareLink"
+          >
+            <div i-carbon-share />
+            <span>生成分享链接</span>
           </button>
         </div>
 
