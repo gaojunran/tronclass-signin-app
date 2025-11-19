@@ -168,6 +168,24 @@ function clearMessages() {
   success.value = "";
 }
 
+// Auto clear success message after 3 seconds
+watch(success, (newValue) => {
+  if (newValue) {
+    setTimeout(() => {
+      success.value = "";
+    }, 3000);
+  }
+});
+
+// Auto clear error message after 5 seconds
+watch(error, (newValue) => {
+  if (newValue) {
+    setTimeout(() => {
+      error.value = "";
+    }, 5000);
+  }
+});
+
 // Logout
 function logout() {
   userStore.clearUser();
@@ -196,6 +214,79 @@ function generateShareLink() {
 
 <template>
   <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
+    <!-- Fixed Messages at Top -->
+    <div
+      v-if="error"
+      fixed
+      top-6
+      left-1/2
+      transform
+      -translate-x-1/2
+      z-50
+      max-w-md
+      w-full
+      mx-6
+      bg-red-900
+      bg-opacity-95
+      border-1
+      border-red-700
+      rounded-lg
+      p-4
+      text-red-200
+      text-sm
+      shadow-lg
+      flex
+      items-center
+      justify-between
+    >
+      <span>{{ error }}</span>
+      <button
+        ml-2
+        text-xs
+        underline
+        hover:text-red-100
+        @click="clearMessages"
+      >
+        关闭
+      </button>
+    </div>
+
+    <div
+      v-if="success"
+      fixed
+      top-6
+      left-1/2
+      transform
+      -translate-x-1/2
+      z-50
+      max-w-md
+      w-full
+      mx-6
+      bg-green-900
+      bg-opacity-95
+      border-1
+      border-green-700
+      rounded-lg
+      p-4
+      text-green-200
+      text-sm
+      shadow-lg
+      flex
+      items-center
+      justify-between
+    >
+      <span>{{ success }}</span>
+      <button
+        ml-2
+        text-xs
+        underline
+        hover:text-green-100
+        @click="clearMessages"
+      >
+        关闭
+      </button>
+    </div>
+
     <div max-w-2xl mx-auto mt-10>
       <!-- Header -->
       <div flex items-center mb-8>
@@ -219,36 +310,6 @@ function generateShareLink() {
 
       <!-- Content -->
       <div v-else space-y-6>
-        <!-- Messages -->
-        <div
-          v-if="error"
-          bg-red-900
-          bg-opacity-20
-          border-1
-          border-red-700
-          rounded
-          p-4
-          text-red-400
-          text-sm
-        >
-          {{ error }}
-          <button ml-2 text-xs underline @click="clearMessages">关闭</button>
-        </div>
-
-        <div
-          v-if="success"
-          bg-green-900
-          bg-opacity-20
-          border-1
-          border-green-700
-          rounded
-          p-4
-          text-green-400
-          text-sm
-        >
-          {{ success }}
-          <button ml-2 text-xs underline @click="clearMessages">关闭</button>
-        </div>
 
         <!-- User Info -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
