@@ -2,6 +2,7 @@
 import type { SigninResponse } from "~/types/index";
 import { signin } from "~/api";
 import { useQRScanner } from "~/composables/qrScanner";
+import { useQRPhoto } from "~/composables/qrPhoto";
 
 defineOptions({
   name: "SharePage",
@@ -23,6 +24,7 @@ const originalEndpoint = ref<string>("");
 const showScanner = ref(false);
 const videoElement = ref<HTMLVideoElement | null>(null);
 const { startScanning, stopScanning, isScanning } = useQRScanner();
+const { triggerFileInput, isProcessing } = useQRPhoto();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
@@ -56,24 +58,37 @@ onUnmounted(() => {
 
 // Start QR scanning
 async function startQRScan() {
-  showScanner.value = true;
   scanResult.value = null;
   error.value = "";
-  await nextTick();
 
-  if (videoElement.value) {
-    try {
-      await startScanning(videoElement.value, handleScanResult);
-    } catch (err) {
-      error.value = "无法启动摄像头，请检查权限设置";
-      console.error("摄像头启动失败:", err);
+  // Check scan mode
+  if (userStore.scanMode === 'photo') {
+    // Photo upload mode
+    const input = triggerFileInput(handleScanResult);
+    input.click();
+  } else {
+    // Video stream mode (default)
+    showScanner.value = true;
+    await nextTick();
+
+    if (videoElement.value) {
+      try {
+        await startScanning(videoElement.value, handleScanResult);
+      } catch (err) {
+        error.value = "无法启动摄像头，请检查权限设置";
+        console.error("摄像头启动失败:", err);
+      }
     }
   }
 }
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  stopScanning();
+  // Only stop scanning if in video mode
+  if (userStore.scanMode === 'video') {
+    stopScanning();
+  }
+  
   loading.value = true;
   error.value = "";
 

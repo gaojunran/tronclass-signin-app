@@ -394,6 +394,75 @@ function generateShareLink() {
           </label>
         </div>
 
+        <!-- Scan Mode -->
+        <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
+          <div text-lg font-bold mb-4>扫码方式</div>
+
+          <div space-y-3>
+            <label
+              flex
+              items-center
+              p-3
+              rounded
+              cursor-pointer
+              transition-colors
+              :class="userStore.scanMode === 'video' ? 'bg-orange-600 bg-opacity-20 border-1 border-orange-600' : 'bg-neutral-900 border-1 border-neutral-700 hover:bg-neutral-800'"
+              @click="userStore.setScanMode('video')"
+            >
+              <input
+                type="radio"
+                name="scanMode"
+                value="video"
+                :checked="userStore.scanMode === 'video'"
+                class="sr-only"
+              />
+              <div flex-1>
+                <div text-sm font-medium>视频流扫码</div>
+                <div text-xs text-neutral-400 mt-1>
+                  实时扫描二维码（默认）
+                </div>
+              </div>
+              <div
+                v-if="userStore.scanMode === 'video'"
+                i-carbon-checkmark
+                text-xl
+                text-orange-500
+              />
+            </label>
+
+            <label
+              flex
+              items-center
+              p-3
+              rounded
+              cursor-pointer
+              transition-colors
+              :class="userStore.scanMode === 'photo' ? 'bg-orange-600 bg-opacity-20 border-1 border-orange-600' : 'bg-neutral-900 border-1 border-neutral-700 hover:bg-neutral-800'"
+              @click="userStore.setScanMode('photo')"
+            >
+              <input
+                type="radio"
+                name="scanMode"
+                value="photo"
+                :checked="userStore.scanMode === 'photo'"
+                class="sr-only"
+              />
+              <div flex-1>
+                <div text-sm font-medium>拍照上传</div>
+                <div text-xs text-neutral-400 mt-1>
+                  拍照后上传解析二维码
+                </div>
+              </div>
+              <div
+                v-if="userStore.scanMode === 'photo'"
+                i-carbon-checkmark
+                text-xl
+                text-orange-500
+              />
+            </label>
+          </div>
+        </div>
+
         <!-- Update Cookie -->
         <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
           <div text-lg font-bold mb-4>更新 Cookie</div>

@@ -8,6 +8,7 @@ import type {
 import { formatRelativeTime } from "~/utils";
 import { getUserList, signin, getScanHistory, getSigninHistory } from "~/api";
 import { useQRScanner } from "~/composables/qrScanner";
+import { useQRPhoto } from "~/composables/qrPhoto";
 
 defineOptions({
   name: "IndexPage",
@@ -34,6 +35,7 @@ const userMap = ref<Map<string, string>>(new Map());
 const showScanner = ref(false);
 const videoElement = ref<HTMLVideoElement | null>(null);
 const { startScanning, stopScanning, isScanning } = useQRScanner();
+const { triggerFileInput, isProcessing } = useQRPhoto();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
@@ -119,24 +121,37 @@ async function loadMainData() {
 
 // Start QR scanning
 async function startQRScan() {
-  showScanner.value = true;
   scanResult.value = null;
-  await nextTick();
 
-  if (videoElement.value) {
-    try {
-      await startScanning(videoElement.value, handleScanResult);
-    } catch (err) {
-      console.warn("无法启动摄像头，fallback到调试模式:", err);
-      // Fallback to debug mode using last scan result
-      await debugWithLastResult();
+  // Check scan mode
+  if (userStore.scanMode === 'photo') {
+    // Photo upload mode
+    const input = triggerFileInput(handleScanResult);
+    input.click();
+  } else {
+    // Video stream mode (default)
+    showScanner.value = true;
+    await nextTick();
+
+    if (videoElement.value) {
+      try {
+        await startScanning(videoElement.value, handleScanResult);
+      } catch (err) {
+        console.warn("无法启动摄像头，fallback到调试模式:", err);
+        // Fallback to debug mode using last scan result
+        await debugWithLastResult();
+      }
     }
   }
 }
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  stopScanning();
+  // Only stop scanning if in video mode
+  if (userStore.scanMode === 'video') {
+    stopScanning();
+  }
+  
   loading.value = true;
 
   try {

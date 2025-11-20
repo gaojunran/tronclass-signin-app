@@ -10,6 +10,9 @@ export const useUserStore = defineStore('user', () => {
   // User name
   const userName = ref<string>('')
 
+  // Scan mode: 'video' (default) or 'photo'
+  const scanMode = ref<'video' | 'photo'>('video')
+
   // Set user ID
   function setUserId(id: string) {
     userId.value = id
@@ -23,6 +26,11 @@ export const useUserStore = defineStore('user', () => {
   // Set user name
   function setUserName(name: string) {
     userName.value = name
+  }
+
+  // Set scan mode
+  function setScanMode(mode: 'video' | 'photo') {
+    scanMode.value = mode
   }
 
   // Clear user data
@@ -47,9 +55,11 @@ export const useUserStore = defineStore('user', () => {
     userId,
     apiEndpoint,
     userName,
+    scanMode,
     setUserId,
     setApiEndpoint,
     setUserName,
+    setScanMode,
     clearUser,
     clearApiEndpoint,
     clearAll,
