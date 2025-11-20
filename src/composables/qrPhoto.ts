@@ -30,9 +30,18 @@ export function useQRPhoto() {
       onScanSuccess(scanResult.data)
     }
     catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to scan QR code from image'
+      // Provide user-friendly error message
+      const errorMessage = err instanceof Error && err.message.includes('No QR code found')
+        ? '未能识别到二维码，请确保照片清晰且包含完整的二维码'
+        : '无法从图片中扫描二维码，请重试'
+      
+      error.value = errorMessage
       console.error('QR Photo scan error:', err)
-      throw err
+      
+      // Show alert to user
+      alert(errorMessage)
+      
+      throw new Error(errorMessage)
     }
     finally {
       isProcessing.value = false
