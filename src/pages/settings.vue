@@ -216,15 +216,14 @@ function generateShareLink() {
   <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
     <!-- Fixed Messages at Top -->
     <div
-      class="-translate-x-1/2 left-1/2"
       v-if="error"
       fixed
       top-6
-      transform
+      left-6
+      right-6
       z-50
       max-w-md
-      w-full
-      mx-6
+      mx-auto
       bg-red-900
       bg-opacity-95
       border-1
@@ -252,14 +251,13 @@ function generateShareLink() {
 
     <div
       v-if="success"
-      class="-translate-x-1/2 left-1/2"
       fixed
       top-6
-      transform
+      left-6
+      right-6
       z-50
       max-w-md
-      w-full
-      mx-6
+      mx-auto
       bg-green-900
       bg-opacity-95
       border-1
