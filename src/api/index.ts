@@ -4,6 +4,7 @@ import type {
   ScanHistory,
   SigninHistory,
   SigninResponse,
+  DigitalSigninResponse,
   UserAddResponse,
 } from '~/types/index'
 import { useUserStore } from '~/stores/user'
@@ -74,7 +75,20 @@ async function fetchAPI<T>(
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      // Try to get error details from response body
+      let errorMessage = `HTTP error! status: ${response.status}`
+      try {
+        const errorData = await response.json()
+        if (errorData.error) {
+          errorMessage = errorData.error
+        } else {
+          errorMessage = JSON.stringify(errorData)
+        }
+      } catch {
+        // If response is not JSON, use status text
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`
+      }
+      throw new Error(errorMessage)
     }
 
     return await response.json()
@@ -168,6 +182,19 @@ export async function signin(scan_result: string, user_id: string): Promise<Sign
   return fetchAPI<SigninResponse>('/signin', {
     method: 'POST',
     body: JSON.stringify({ ua_info, scan_result, user_id }),
+  })
+}
+
+/**
+ * Digital sign in (brute force mode)
+ * POST /signin-digital
+ */
+export async function signinDigital(user_id: string, data?: string): Promise<DigitalSigninResponse> {
+  const ua_info = await getBrowserInfo()
+
+  return fetchAPI<DigitalSigninResponse>('/signin-digital', {
+    method: 'POST',
+    body: JSON.stringify({ ua_info, user_id, data }),
   })
 }
 

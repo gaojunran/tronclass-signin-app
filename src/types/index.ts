@@ -33,16 +33,30 @@ export interface SigninHistory {
   id: string // Randomly generated, unique
   user_id: string // User id for whom to sign in
   cookie: string // Cookie carried during sign-in
-  scan_history_id: string // Which scan result was used
-  request_data: string // Data carried in sign-in request
-  response_code: number // Response status code
-  response_data: string // Response body
+  scan_history_id: string | null // Which scan result was used (null for digital signin)
+  request_data: any // Data carried in sign-in request
+  response_code: number | null // Response status code
+  response_data: any // Response body
   created_at: string // Sign-in time
+}
+
+// Rollcall task data type
+export interface RollcallTask {
+  rollcall_id: string // Task ID
+  status: string // Task status (e.g., "absent")
+  is_number: boolean // Is number signin
+  is_radar: boolean // Is radar signin
+  [key: string]: any // Other task properties
 }
 
 // API response types
 export interface SigninResponse {
   scan_result: ScanHistory
+  signin_results: SigninHistory[]
+}
+
+export interface DigitalSigninResponse {
+  tasks: RollcallTask[]
   signin_results: SigninHistory[]
 }
 

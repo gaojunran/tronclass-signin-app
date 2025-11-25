@@ -3,10 +3,11 @@ import type {
   ScanHistory,
   SigninHistory,
   SigninResponse,
+  DigitalSigninResponse,
   UserWithCookie,
 } from "~/types/index";
 import { formatRelativeTime } from "~/utils";
-import { getUserList, signin, getScanHistory, getSigninHistory } from "~/api";
+import { getUserList, signin, signinDigital, getScanHistory, getSigninHistory } from "~/api";
 import { useQRScanner } from "~/composables/qrScanner";
 import { useQRPhoto } from "~/composables/qrPhoto";
 
@@ -39,6 +40,11 @@ const { triggerFileInput, isProcessing } = useQRPhoto();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
+
+// Digital signin dialog
+const showDigitalDialog = ref(false);
+const digitalCode = ref("");
+const digitalResult = ref<DigitalSigninResponse | null>(null);
 
 // Initialize
 onMounted(async () => {
@@ -122,6 +128,7 @@ async function loadMainData() {
 // Start QR scanning
 async function startQRScan() {
   scanResult.value = null;
+  digitalResult.value = null;
 
   // Check scan mode
   if (userStore.scanMode === 'photo') {
@@ -185,6 +192,38 @@ function goToHistory() {
 // Get user name by id
 function getUserName(userId: string): string {
   return userMap.value.get(userId) || "未知用户";
+}
+
+// Start digital signin
+function startDigitalSignin() {
+  scanResult.value = null;
+  digitalResult.value = null;
+  digitalCode.value = "";
+  showDigitalDialog.value = true;
+}
+
+// Handle digital signin
+async function handleDigitalSignin() {
+  loading.value = true;
+  error.value = "";
+
+  try {
+    const response = await signinDigital(userStore.userId, digitalCode.value || undefined);
+    digitalResult.value = response;
+    scanResult.value = null; // Clear scan result
+    showDigitalDialog.value = false; // Close dialog first
+    await loadMainData();
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : "数字签到失败";
+  } finally {
+    loading.value = false;
+  }
+}
+
+// Close digital dialog
+function closeDigitalDialog() {
+  showDigitalDialog.value = false;
+  digitalCode.value = "";
 }
 
 // Debug: use last scan result from backend
@@ -356,14 +395,7 @@ async function debugWithLastResult() {
       >
         <div text-lg font-bold mb-4 flex items-center>
           <div i-carbon-checkmark-filled text-green-400 mr-2 />
-          扫码完成
-        </div>
-
-        <div mb-4>
-          <div text-sm text-neutral-400 mb-1>扫码结果：</div>
-          <div text-sm font-mono bg-neutral-900 p-3 rounded break-all>
-            {{ scanResult.scan_result.result }}
-          </div>
+          扫码签到完成
         </div>
 
         <div>
@@ -379,16 +411,42 @@ async function debugWithLastResult() {
               rounded
               text-sm
             >
-              <div flex items-center justify-between>
+              <div flex items-center justify-between mb-2>
                 <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
                 <div
                   :class="
                     signinItem.response_code === 200
                       ? 'text-green-400'
+                      : signinItem.response_code === null
+                      ? 'text-yellow-400'
                       : 'text-red-400'
                   "
                 >
-                  {{ signinItem.response_code }}
+                  {{ signinItem.response_code ?? '失败' }}
+                </div>
+              </div>
+              <!-- Show full response on failure -->
+              <div 
+                v-if="signinItem.response_code !== 200"
+                mt-2
+                pt-2
+                border-t-1
+                border-neutral-800
+              >
+                <div 
+                  text-xs
+                  font-mono
+                  bg-neutral-950
+                  p-2
+                  rounded
+                  text-red-400
+                  break-all
+                  max-h-40
+                  overflow-y-auto
+                >
+                  {{ typeof signinItem.response_data === 'string' 
+                     ? signinItem.response_data 
+                     : JSON.stringify(signinItem.response_data, null, 2) }}
                 </div>
               </div>
             </div>
@@ -409,6 +467,104 @@ async function debugWithLastResult() {
         </button>
       </div>
 
+      <!-- Digital Signin Result Display -->
+      <div
+        v-if="digitalResult"
+        bg-neutral-800
+        border-1
+        border-neutral-700
+        rounded
+        p-6
+        mb-6
+      >
+        <div text-lg font-bold mb-4 flex items-center>
+          <div i-carbon-checkmark-filled text-blue-400 mr-2 />
+          数字签到完成
+        </div>
+
+        <!-- Signin Code Display -->
+        <div mb-4>
+          <div text-sm text-neutral-400 mb-1>使用的签到码：</div>
+          <div text-lg font-mono bg-neutral-900 p-3 rounded text-center tracking-widest font-bold text-blue-400>
+            {{ 
+              digitalResult.signin_results.length > 0 && 
+              digitalResult.signin_results[0].request_data?.numberCode 
+                ? digitalResult.signin_results[0].request_data.numberCode 
+                : '遍历破解'
+            }}
+          </div>
+        </div>
+
+        <!-- Signin Results -->
+        <div>
+          <div text-sm text-neutral-400 mb-2>
+            签到结果（{{ digitalResult.signin_results.length }} 人）：
+          </div>
+          <div space-y-2>
+            <div
+              v-for="signinItem in digitalResult.signin_results"
+              :key="signinItem.id"
+              bg-neutral-900
+              p-3
+              rounded
+              text-sm
+            >
+              <div flex items-center justify-between mb-2>
+                <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
+                <div
+                  :class="
+                    signinItem.response_code === 200
+                      ? 'text-green-400'
+                      : signinItem.response_code === null
+                      ? 'text-yellow-400'
+                      : 'text-red-400'
+                  "
+                >
+                  {{ signinItem.response_code ?? '失败' }}
+                </div>
+              </div>
+              <!-- Show full response on failure -->
+              <div 
+                v-if="signinItem.response_code !== 200"
+                mt-2
+                pt-2
+                border-t-1
+                border-neutral-800
+              >
+                <div 
+                  text-xs
+                  font-mono
+                  bg-neutral-950
+                  p-2
+                  rounded
+                  text-red-400
+                  break-all
+                  max-h-40
+                  overflow-y-auto
+                >
+                  {{ typeof signinItem.response_data === 'string' 
+                     ? signinItem.response_data 
+                     : JSON.stringify(signinItem.response_data, null, 2) }}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button
+          mt-4
+          bg-neutral-700
+          hover:bg-neutral-600
+          px-4
+          py-2
+          rounded
+          text-sm
+          @click="digitalResult = null"
+        >
+          关闭
+        </button>
+      </div>
+
       <!-- Scan Button -->
       <button
         bg-orange-600
@@ -420,7 +576,7 @@ async function debugWithLastResult() {
         text-lg
         font-medium
         w-full
-        mb-8
+        mb-4
         flex
         items-center
         justify-center
@@ -429,6 +585,28 @@ async function debugWithLastResult() {
       >
         <div i-carbon-qr-code mr-2 text-2xl />
         <span>{{ isScanning ? "扫码中..." : "扫码签到" }}</span>
+      </button>
+
+      <!-- Digital Signin Button -->
+      <button
+        bg-blue-600
+        hover:bg-blue-500
+        text-white
+        px-8
+        py-4
+        rounded-lg
+        text-lg
+        font-medium
+        w-full
+        mb-8
+        flex
+        items-center
+        justify-center
+        :disabled="loading"
+        @click="startDigitalSignin"
+      >
+        <div i-carbon-keyboard mr-2 text-2xl />
+        <span>数字签到</span>
       </button>
 
       <!-- Recent Scans -->
@@ -491,6 +669,96 @@ async function debugWithLastResult() {
         text-sm
       >
         {{ error }}
+      </div>
+    </div>
+
+    <!-- Digital Signin Dialog -->
+    <div
+      v-if="showDigitalDialog"
+      fixed
+      inset-0
+      bg-black
+      bg-opacity-90
+      z-50
+      flex
+      items-center
+      justify-center
+      p-6
+    >
+      <div max-w-md w-full bg-neutral-800 rounded-lg p-6>
+        <div flex items-center justify-between mb-4>
+          <div text-xl font-bold>数字签到</div>
+          <button
+            bg-neutral-700
+            hover:bg-neutral-600
+            p-2
+            rounded
+            @click="closeDigitalDialog"
+          >
+            <div i-carbon-close text-xl />
+          </button>
+        </div>
+
+        <div mb-4>
+          <label text-sm text-neutral-400 mb-2 block>
+            签到码（可选）
+          </label>
+          <input
+            v-model="digitalCode"
+            type="text"
+            placeholder="输入数字签到码"
+            bg-neutral-900
+            border-1
+            border-neutral-700
+            rounded
+            px-4
+            py-3
+            w-full
+            text-center
+            text-2xl
+            tracking-widest
+            font-mono
+            focus:outline-none
+            focus:border-blue-500
+            @keydown.enter="handleDigitalSignin"
+          />
+          <div text-xs text-neutral-500 mt-2 text-center>
+            留空则使用遍历破解方式，签到课程由 API 后端自动确定
+          </div>
+        </div>
+
+        <button
+          bg-blue-600
+          hover:bg-blue-500
+          text-white
+          px-6
+          py-3
+          rounded
+          w-full
+          :disabled="loading"
+          @click="handleDigitalSignin"
+        >
+          {{ loading ? "签到中..." : "开始签到" }}
+        </button>
+
+        <!-- Error Display with Full Response -->
+        <div v-if="error" mt-4>
+          <div 
+            bg-neutral-900
+            border-1
+            border-red-900
+            rounded
+            p-3
+            text-xs
+            font-mono
+            text-red-400
+            break-all
+            max-h-60
+            overflow-y-auto
+          >
+            {{ error }}
+          </div>
+        </div>
       </div>
     </div>
 
