@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import type { SigninResponse } from "~/types/index";
 import { signin } from "~/api";
+import { isTauri } from "~/utils/tauri";
 import { useQRScanner } from "~/composables/qrScanner";
 import { useQRPhoto } from "~/composables/qrPhoto";
+import { useTauriQRScanner } from "~/composables/tauriQrScanner";
 
 defineOptions({
   name: "SharePage",
@@ -25,6 +27,7 @@ const showScanner = ref(false);
 const videoElement = ref<HTMLVideoElement | null>(null);
 const { startScanning, stopScanning, isScanning } = useQRScanner();
 const { triggerFileInput, isProcessing } = useQRPhoto();
+const { startScanning: startTauriScanning, stopScanning: stopTauriScanning, isScanning: isTauriScanning } = useTauriQRScanner();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
@@ -68,15 +71,27 @@ async function startQRScan() {
     input.click();
   } else {
     // Video stream mode (default)
-    showScanner.value = true;
-    await nextTick();
-
-    if (videoElement.value) {
+    // Check if running in Tauri environment
+    if (isTauri()) {
+      // Use Tauri barcode scanner
       try {
-        await startScanning(videoElement.value, handleScanResult);
+        await startTauriScanning(handleScanResult);
       } catch (err) {
         error.value = "无法启动摄像头，请检查权限设置";
-        console.error("摄像头启动失败:", err);
+        console.error("Tauri扫码失败:", err);
+      }
+    } else {
+      // Use web-based QR scanner
+      showScanner.value = true;
+      await nextTick();
+
+      if (videoElement.value) {
+        try {
+          await startScanning(videoElement.value, handleScanResult);
+        } catch (err) {
+          error.value = "无法启动摄像头，请检查权限设置";
+          console.error("摄像头启动失败:", err);
+        }
       }
     }
   }
@@ -86,7 +101,11 @@ async function startQRScan() {
 async function handleScanResult(result: string) {
   // Only stop scanning if in video mode
   if (userStore.scanMode === 'video') {
-    stopScanning();
+    if (isTauri()) {
+      stopTauriScanning();
+    } else {
+      stopScanning();
+    }
   }
   
   loading.value = true;

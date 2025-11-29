@@ -1,0 +1,23 @@
+[package]
+name = "tronclass-signin-app"
+version = "0.1.0"
+description = "畅课签到助手"
+authors = ["nebula"]
+edition = "2021"
+
+[lib]
+name = "tronclass_signin_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-barcode-scanner = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
+tauri-plugin-barcode-scanner = "2"
