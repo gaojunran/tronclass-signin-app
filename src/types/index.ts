@@ -69,3 +69,23 @@ export interface DigitalSigninResponse {
 export interface UserAddResponse {
   id: string
 }
+
+// Todo item data type
+export interface TodoItem {
+  id: number
+  type: string // e.g., "homework"
+  title: string
+  course_id: number
+  course_code: string
+  course_name: string
+  course_type: number
+  end_time: string
+  is_locked: boolean
+  is_student: boolean
+  prerequisites: any[]
+}
+
+// Todo list response
+export interface TodoListResponse {
+  todo_list: TodoItem[]
+}

@@ -5,10 +5,18 @@ import type {
   SigninResponse,
   DigitalSigninResponse,
   UserWithCookie,
+  TodoItem,
 } from "~/types/index";
 import { formatRelativeTime } from "~/utils";
 import { isTauri } from "~/utils/tauri";
-import { getUserList, signin, signinDigital, getScanHistory, getSigninHistory } from "~/api";
+import {
+  getUserList,
+  signin,
+  signinDigital,
+  getScanHistory,
+  getSigninHistory,
+  getTodos,
+} from "~/api";
 import { useQRScanner } from "~/composables/qrScanner";
 import { useQRPhoto } from "~/composables/qrPhoto";
 import { useTauriQRScanner } from "~/composables/tauriQrScanner";
@@ -31,6 +39,10 @@ const error = ref("");
 const recentScans = ref<ScanHistory[]>([]);
 const lastSignin = ref<SigninHistory | null>(null);
 
+// Todos
+const todos = ref<TodoItem[]>([]);
+const todosError = ref<string>("");
+
 // User map for displaying names
 const userMap = ref<Map<string, string>>(new Map());
 
@@ -39,7 +51,11 @@ const showScanner = ref(false);
 const videoElement = ref<HTMLVideoElement | null>(null);
 const { startScanning, stopScanning, isScanning } = useQRScanner();
 const { triggerFileInput, isProcessing } = useQRPhoto();
-const { startScanning: startTauriScanning, stopScanning: stopTauriScanning, isScanning: isTauriScanning } = useTauriQRScanner();
+const {
+  startScanning: startTauriScanning,
+  stopScanning: stopTauriScanning,
+  isScanning: isTauriScanning,
+} = useTauriQRScanner();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
@@ -112,6 +128,7 @@ function createNewUser() {
 async function loadMainData() {
   try {
     loading.value = true;
+    todosError.value = "";
     const [scans, signins, allUsers] = await Promise.all([
       getScanHistory(3),
       getSigninHistory(1, userStore.userId),
@@ -121,6 +138,16 @@ async function loadMainData() {
     lastSignin.value = signins.length > 0 ? signins[0] : null;
     // Build user map
     userMap.value = new Map(allUsers.map((u) => [u.id, u.name]));
+
+    // Load todos separately to handle errors independently
+    try {
+      const todosData = await getTodos(userStore.userId);
+      todos.value = todosData.todo_list || [];
+    } catch (err) {
+      todosError.value =
+        err instanceof Error ? err.message : "加载待办事项失败";
+      console.error("加载待办事项失败:", err);
+    }
   } catch (err) {
     console.error("加载数据失败:", err);
   } finally {
@@ -134,7 +161,7 @@ async function startQRScan() {
   digitalResult.value = null;
 
   // Check scan mode
-  if (userStore.scanMode === 'photo') {
+  if (userStore.scanMode === "photo") {
     // Photo upload mode
     const input = triggerFileInput(handleScanResult);
     input.click();
@@ -171,14 +198,14 @@ async function startQRScan() {
 // Handle scan result
 async function handleScanResult(result: string) {
   // Only stop scanning if in video mode
-  if (userStore.scanMode === 'video') {
+  if (userStore.scanMode === "video") {
     if (isTauri()) {
       stopTauriScanning();
     } else {
       stopScanning();
     }
   }
-  
+
   loading.value = true;
 
   try {
@@ -232,7 +259,10 @@ async function handleDigitalSignin() {
   error.value = "";
 
   try {
-    const response = await signinDigital(userStore.userId, digitalCode.value || undefined);
+    const response = await signinDigital(
+      userStore.userId,
+      digitalCode.value || undefined,
+    );
     digitalResult.value = response;
     scanResult.value = null; // Clear scan result
     showDigitalDialog.value = false; // Close dialog first
@@ -442,22 +472,22 @@ async function debugWithLastResult() {
                     signinItem.response_code === 200
                       ? 'text-green-400'
                       : signinItem.response_code === null
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
                   "
                 >
-                  {{ signinItem.response_code ?? '失败' }}
+                  {{ signinItem.response_code ?? "失败" }}
                 </div>
               </div>
               <!-- Show full response on failure -->
-              <div 
+              <div
                 v-if="signinItem.response_code !== 200"
                 mt-2
                 pt-2
                 border-t-1
                 border-neutral-800
               >
-                <div 
+                <div
                   text-xs
                   font-mono
                   bg-neutral-950
@@ -468,9 +498,11 @@ async function debugWithLastResult() {
                   max-h-40
                   overflow-y-auto
                 >
-                  {{ typeof signinItem.response_data === 'string' 
-                     ? signinItem.response_data 
-                     : JSON.stringify(signinItem.response_data, null, 2) }}
+                  {{
+                    typeof signinItem.response_data === "string"
+                      ? signinItem.response_data
+                      : JSON.stringify(signinItem.response_data, null, 2)
+                  }}
                 </div>
               </div>
             </div>
@@ -509,12 +541,22 @@ async function debugWithLastResult() {
         <!-- Signin Code Display -->
         <div mb-4>
           <div text-sm text-neutral-400 mb-1>使用的签到码：</div>
-          <div text-lg font-mono bg-neutral-900 p-3 rounded text-center tracking-widest font-bold text-blue-400>
-            {{ 
-              digitalResult.signin_results.length > 0 && 
-              digitalResult.signin_results[0].request_data?.numberCode 
-                ? digitalResult.signin_results[0].request_data.numberCode 
-                : '遍历破解'
+          <div
+            text-lg
+            font-mono
+            bg-neutral-900
+            p-3
+            rounded
+            text-center
+            tracking-widest
+            font-bold
+            text-blue-400
+          >
+            {{
+              digitalResult.signin_results.length > 0 &&
+              digitalResult.signin_results[0].request_data?.numberCode
+                ? digitalResult.signin_results[0].request_data.numberCode
+                : "遍历破解"
             }}
           </div>
         </div>
@@ -540,22 +582,22 @@ async function debugWithLastResult() {
                     signinItem.response_code === 200
                       ? 'text-green-400'
                       : signinItem.response_code === null
-                      ? 'text-yellow-400'
-                      : 'text-red-400'
+                        ? 'text-yellow-400'
+                        : 'text-red-400'
                   "
                 >
-                  {{ signinItem.response_code ?? '失败' }}
+                  {{ signinItem.response_code ?? "失败" }}
                 </div>
               </div>
               <!-- Show full response on failure -->
-              <div 
+              <div
                 v-if="signinItem.response_code !== 200"
                 mt-2
                 pt-2
                 border-t-1
                 border-neutral-800
               >
-                <div 
+                <div
                   text-xs
                   font-mono
                   bg-neutral-950
@@ -566,9 +608,11 @@ async function debugWithLastResult() {
                   max-h-40
                   overflow-y-auto
                 >
-                  {{ typeof signinItem.response_data === 'string' 
-                     ? signinItem.response_data 
-                     : JSON.stringify(signinItem.response_data, null, 2) }}
+                  {{
+                    typeof signinItem.response_data === "string"
+                      ? signinItem.response_data
+                      : JSON.stringify(signinItem.response_data, null, 2)
+                  }}
                 </div>
               </div>
             </div>
@@ -604,7 +648,7 @@ async function debugWithLastResult() {
         flex
         items-center
         justify-center
-        :disabled="loading || isScanning"
+        :disabled="isScanning"
         @click="startQRScan"
       >
         <div i-carbon-qr-code mr-2 text-2xl />
@@ -680,6 +724,87 @@ async function debugWithLastResult() {
         </div>
       </div>
 
+      <!-- Todos Section -->
+      <div mb-8>
+        <div text-lg font-bold mb-4>待办事项</div>
+
+        <!-- Error Display -->
+        <div
+          v-if="todosError"
+          bg-red-900
+          bg-opacity-20
+          border-1
+          border-red-700
+          rounded
+          p-4
+          text-center
+        >
+          <div text-red-400 text-sm mb-3>{{ todosError }}</div>
+          <button
+            bg-red-700
+            hover:bg-red-600
+            px-4
+            py-2
+            rounded
+            text-sm
+            @click="router.push('/settings')"
+          >
+            前往设置刷新 Cookie
+          </button>
+        </div>
+
+        <!-- Empty State -->
+        <div v-else-if="todos.length === 0" text-center py-8 text-neutral-500>
+          暂无待办事项
+        </div>
+
+        <!-- Todos List -->
+        <div v-else space-y-3>
+          <div
+            v-for="todo in todos"
+            :key="todo.id"
+            bg-neutral-800
+            border-1
+            border-neutral-700
+            rounded
+            p-4
+          >
+            <div flex items-start justify-between mb-2>
+              <div flex-1>
+                <div text-base font-medium text-neutral-200 mb-1>
+                  {{ todo.title }}
+                </div>
+                <div text-sm text-neutral-400 mb-1>
+                  {{ todo.course_name }}
+                </div>
+                <div text-xs text-neutral-500 flex items-center gap-2>
+                  <span>{{ todo.type }}</span>
+                  <span>•</span>
+                  <span
+                    >截止：{{
+                      new Date(todo.end_time).toLocaleString("zh-CN")
+                    }}</span
+                  >
+                </div>
+              </div>
+              <div
+                text-xs
+                px-2
+                py-1
+                rounded
+                :class="
+                  todo.is_locked
+                    ? 'bg-neutral-700 text-neutral-400'
+                    : 'bg-blue-900 bg-opacity-30 text-blue-400'
+                "
+              >
+                {{ todo.is_locked ? "已锁定" : "进行中" }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Error Display -->
       <div
         v-if="error"
@@ -724,9 +849,7 @@ async function debugWithLastResult() {
         </div>
 
         <div mb-4>
-          <label text-sm text-neutral-400 mb-2 block>
-            签到码（可选）
-          </label>
+          <label text-sm text-neutral-400 mb-2 block> 签到码（可选） </label>
           <input
             v-model="digitalCode"
             type="text"
@@ -767,7 +890,7 @@ async function debugWithLastResult() {
 
         <!-- Error Display with Full Response -->
         <div v-if="error" mt-4>
-          <div 
+          <div
             bg-neutral-900
             border-1
             border-red-900
@@ -820,6 +943,7 @@ async function debugWithLastResult() {
               <span>调试</span>
             </button>
             <button
+              v-if="!isTauri()"
               bg-neutral-800
               hover:bg-neutral-700
               p-2
@@ -827,6 +951,16 @@ async function debugWithLastResult() {
               @click="closeScanner"
             >
               <div i-carbon-close text-xl />
+            </button>
+            <button
+              v-else
+              bg-neutral-800
+              hover:bg-neutral-700
+              p-2
+              rounded
+              @click="router.push('/')"
+            >
+              <div i-carbon-home text-xl />
             </button>
           </div>
         </div>

@@ -6,15 +6,16 @@ import type {
   SigninResponse,
   DigitalSigninResponse,
   UserAddResponse,
-} from '~/types/index'
-import { useUserStore } from '~/stores/user'
+  TodoListResponse,
+} from "~/types/index";
+import { useUserStore } from "~/stores/user";
 
 /**
  * Get the current API endpoint URL from pinia store
  */
 function getApiEndpoint(): string {
-  const userStore = useUserStore()
-  return userStore.apiEndpoint.replace(/\/$/, '') // Remove trailing slash
+  const userStore = useUserStore();
+  return userStore.apiEndpoint.replace(/\/$/, ""); // Remove trailing slash
 }
 
 /**
@@ -23,36 +24,37 @@ function getApiEndpoint(): string {
 async function getBrowserInfo(): Promise<string> {
   try {
     // Check if UA-CH (User-Agent Client Hints) is supported
-    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues) {
-      const info = await navigator.userAgentData.getHighEntropyValues([
-        'model',
-        'platform',
-        'platformVersion',
-        'architecture',
-        'bitness',
-        'uaFullVersion',
-      ]) as any // TODO: add type
+    if (
+      navigator.userAgentData &&
+      navigator.userAgentData.getHighEntropyValues
+    ) {
+      const info = (await navigator.userAgentData.getHighEntropyValues([
+        "model",
+        "platform",
+        "platformVersion",
+        "architecture",
+        "bitness",
+        "uaFullVersion",
+      ])) as any; // TODO: add type
 
       // Build a readable string
       const uaCHString = [
-        `Platform: ${info.platform || 'Unknown'}`,
-        `Version: ${info.platformVersion || 'Unknown'}`,
-        `Model: ${info.model || 'Unknown'}`,
-        `Architecture: ${info.architecture || 'Unknown'}`,
-        `Bitness: ${info.bitness || 'Unknown'}`,
-        `FullVersion: ${info.uaFullVersion || 'Unknown'}`,
-      ].join(' | ')
+        `Platform: ${info.platform || "Unknown"}`,
+        `Version: ${info.platformVersion || "Unknown"}`,
+        `Model: ${info.model || "Unknown"}`,
+        `Architecture: ${info.architecture || "Unknown"}`,
+        `Bitness: ${info.bitness || "Unknown"}`,
+        `FullVersion: ${info.uaFullVersion || "Unknown"}`,
+      ].join(" | ");
 
-      return uaCHString
-    }
-    else {
+      return uaCHString;
+    } else {
       // Fallback: use traditional UA string
-      return `User-Agent: ${navigator.userAgent}`
+      return `User-Agent: ${navigator.userAgent}`;
     }
-  }
-  catch (err) {
-    console.error('Failed to get UA info:', err)
-    return `User-Agent: ${navigator.userAgent}`
+  } catch (err) {
+    console.error("Failed to get UA info:", err);
+    return `User-Agent: ${navigator.userAgent}`;
   }
 }
 
@@ -63,39 +65,38 @@ async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit,
 ): Promise<T> {
-  const url = `${getApiEndpoint()}${endpoint}`
-  console.log(`fetching ${url} with options:`, options)
+  const url = `${getApiEndpoint()}${endpoint}`;
+  console.log(`fetching ${url} with options:`, options);
   try {
     const response = await fetch(url, {
       ...options,
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
         ...options?.headers,
       },
-    })
+    });
 
     if (!response.ok) {
       // Try to get error details from response body
-      let errorMessage = `HTTP error! status: ${response.status}`
+      let errorMessage = `HTTP error! status: ${response.status}`;
       try {
-        const errorData = await response.json()
+        const errorData = await response.json();
         if (errorData.error) {
-          errorMessage = errorData.error
+          errorMessage = errorData.error;
         } else {
-          errorMessage = JSON.stringify(errorData)
+          errorMessage = JSON.stringify(errorData);
         }
       } catch {
         // If response is not JSON, use status text
-        errorMessage = `HTTP ${response.status}: ${response.statusText}`
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
-      throw new Error(errorMessage)
+      throw new Error(errorMessage);
     }
 
-    return await response.json()
-  }
-  catch (error) {
-    console.error(`API request failed: ${endpoint}`, error)
-    throw error
+    return await response.json();
+  } catch (error) {
+    console.error(`API request failed: ${endpoint}`, error);
+    throw error;
   }
 }
 
@@ -104,7 +105,7 @@ async function fetchAPI<T>(
  * GET /user/list
  */
 export async function getUserList(): Promise<UserWithCookie[]> {
-  return fetchAPI<UserWithCookie[]>('/user/list')
+  return fetchAPI<UserWithCookie[]>("/user/list");
 }
 
 /**
@@ -112,12 +113,12 @@ export async function getUserList(): Promise<UserWithCookie[]> {
  * POST /user/add
  */
 export async function addUser(name: string): Promise<UserAddResponse> {
-  const ua_info = await getBrowserInfo()
+  const ua_info = await getBrowserInfo();
 
-  return fetchAPI<UserAddResponse>('/user/add', {
-    method: 'POST',
+  return fetchAPI<UserAddResponse>("/user/add", {
+    method: "POST",
     body: JSON.stringify({ ua_info, name }),
-  })
+  });
 }
 
 /**
@@ -125,12 +126,12 @@ export async function addUser(name: string): Promise<UserAddResponse> {
  * POST /user/remove/<id>
  */
 export async function removeUser(id: string): Promise<void> {
-  const ua_info = await getBrowserInfo()
+  const ua_info = await getBrowserInfo();
 
   return fetchAPI<void>(`/user/remove/${id}`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ ua_info }),
-  })
+  });
 }
 
 /**
@@ -138,77 +139,93 @@ export async function removeUser(id: string): Promise<void> {
  * POST /user/rename/<id>
  */
 export async function renameUser(id: string, new_name: string): Promise<void> {
-  const ua_info = await getBrowserInfo()
+  const ua_info = await getBrowserInfo();
 
   return fetchAPI<void>(`/user/rename/${id}`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ ua_info, new_name }),
-  })
+  });
 }
 
 /**
  * Refresh user's cookie
  * POST /user/refresh/<id>
  */
-export async function refreshUserCookie(id: string, cookie: string): Promise<void> {
-  const ua_info = await getBrowserInfo()
+export async function refreshUserCookie(
+  id: string,
+  cookie: string,
+): Promise<void> {
+  const ua_info = await getBrowserInfo();
 
   return fetchAPI<void>(`/user/refresh/${id}`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ ua_info, cookie }),
-  })
+  });
 }
 
 /**
  * Update user's unified identity account/password
  * POST /user/identity/update/<id>
  */
-export async function updateUserIdentity(id: string, account: string, password: string): Promise<void> {
-  const ua_info = await getBrowserInfo()
+export async function updateUserIdentity(
+  id: string,
+  account: string,
+  password: string,
+): Promise<void> {
+  const ua_info = await getBrowserInfo();
 
   return fetchAPI<void>(`/user/identity/update/${id}`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ ua_info, account, password }),
-  })
+  });
 }
 
 /**
  * Update user's is_auto value
  * POST /user/auto/<id>
  */
-export async function updateUserAuto(id: string, is_auto: boolean): Promise<void> {
-  const ua_info = await getBrowserInfo()
+export async function updateUserAuto(
+  id: string,
+  is_auto: boolean,
+): Promise<void> {
+  const ua_info = await getBrowserInfo();
 
   return fetchAPI<void>(`/user/auto/${id}`, {
-    method: 'POST',
+    method: "POST",
     body: JSON.stringify({ ua_info, is_auto }),
-  })
+  });
 }
 
 /**
  * Scan QR code and sign in for all users
  * POST /signin
  */
-export async function signin(scan_result: string, user_id: string): Promise<SigninResponse> {
-  const ua_info = await getBrowserInfo()
+export async function signin(
+  scan_result: string,
+  user_id: string,
+): Promise<SigninResponse> {
+  const ua_info = await getBrowserInfo();
 
-  return fetchAPI<SigninResponse>('/signin', {
-    method: 'POST',
+  return fetchAPI<SigninResponse>("/signin", {
+    method: "POST",
     body: JSON.stringify({ ua_info, scan_result, user_id }),
-  })
+  });
 }
 
 /**
  * Digital sign in (brute force mode)
  * POST /signin-digital
  */
-export async function signinDigital(user_id: string, data?: string): Promise<DigitalSigninResponse> {
-  const ua_info = await getBrowserInfo()
+export async function signinDigital(
+  user_id: string,
+  data?: string,
+): Promise<DigitalSigninResponse> {
+  const ua_info = await getBrowserInfo();
 
-  return fetchAPI<DigitalSigninResponse>('/signin-digital', {
-    method: 'POST',
+  return fetchAPI<DigitalSigninResponse>("/signin-digital", {
+    method: "POST",
     body: JSON.stringify({ ua_info, user_id, data }),
-  })
+  });
 }
 
 /**
@@ -220,16 +237,13 @@ export async function getSigninHistory(
   user_id?: string,
   index?: number,
 ): Promise<SigninHistory[]> {
-  const params = new URLSearchParams()
-  if (count !== undefined)
-    params.append('count', count.toString())
-  if (user_id)
-    params.append('user_id', user_id)
-  if (index !== undefined)
-    params.append('index', index.toString())
+  const params = new URLSearchParams();
+  if (count !== undefined) params.append("count", count.toString());
+  if (user_id) params.append("user_id", user_id);
+  if (index !== undefined) params.append("index", index.toString());
 
-  const query = params.toString() ? `?${params.toString()}` : ''
-  return fetchAPI<SigninHistory[]>(`/history/signin${query}`)
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return fetchAPI<SigninHistory[]>(`/history/signin${query}`);
 }
 
 /**
@@ -241,14 +255,22 @@ export async function getScanHistory(
   user_id?: string,
   index?: number,
 ): Promise<ScanHistory[]> {
-  const params = new URLSearchParams()
-  if (count !== undefined)
-    params.append('count', count.toString())
-  if (user_id)
-    params.append('user_id', user_id)
-  if (index !== undefined)
-    params.append('index', index.toString())
+  const params = new URLSearchParams();
+  if (count !== undefined) params.append("count", count.toString());
+  if (user_id) params.append("user_id", user_id);
+  if (index !== undefined) params.append("index", index.toString());
 
-  const query = params.toString() ? `?${params.toString()}` : ''
-  return fetchAPI<ScanHistory[]>(`/history/scan${query}`)
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return fetchAPI<ScanHistory[]>(`/history/scan${query}`);
+}
+
+/**
+ * Get todos for a user
+ * GET /todos?user_id=<id>
+ */
+export async function getTodos(user_id: string): Promise<TodoListResponse> {
+  const params = new URLSearchParams();
+  params.append("user_id", user_id);
+
+  return fetchAPI<TodoListResponse>(`/todos?${params.toString()}`);
 }
