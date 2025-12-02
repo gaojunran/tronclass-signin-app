@@ -670,7 +670,6 @@ async function debugWithLastResult() {
         flex
         items-center
         justify-center
-        :disabled="loading"
         @click="startDigitalSignin"
       >
         <div i-carbon-keyboard mr-2 text-2xl />
@@ -885,7 +884,7 @@ async function debugWithLastResult() {
           :disabled="loading"
           @click="handleDigitalSignin"
         >
-          {{ loading ? "签到中..." : "开始签到" }}
+          {{ loading ? "请稍等..." : "开始签到" }}
         </button>
 
         <!-- Error Display with Full Response -->
