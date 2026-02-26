@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { ScanHistory, SigninHistory, UserWithCookie } from '~/types/index'
-import { formatDate, formatRelativeTime } from '~/utils'
+import type { ScanHistory, SigninHistory } from '~/types/index'
 import { getUserList } from '~/api'
+import { formatDate, formatRelativeTime } from '~/utils'
 
 defineOptions({
   name: 'HistoryPage',
@@ -43,12 +43,10 @@ async function loadScanHistory(append = false) {
     )
     const data = await response.json()
 
-    if (append) {
+    if (append)
       scanHistory.value = [...scanHistory.value, ...data]
-    }
-    else {
+    else
       scanHistory.value = data
-    }
 
     scanHasMore.value = data.length === scanPageSize.value
   }
@@ -73,12 +71,10 @@ async function loadSigninHistory(append = false) {
     const response = await fetch(url)
     const data = await response.json()
 
-    if (append) {
+    if (append)
       signinHistory.value = [...signinHistory.value, ...data]
-    }
-    else {
+    else
       signinHistory.value = data
-    }
 
     signinHasMore.value = data.length === signinPageSize.value
   }
@@ -90,13 +86,12 @@ async function loadSigninHistory(append = false) {
   }
 }
 
-// Load more scan history
+// Load more
 function loadMoreScan() {
   scanPage.value++
   loadScanHistory(true)
 }
 
-// Load more signin history
 function loadMoreSignin() {
   signinPage.value++
   loadSigninHistory(true)
@@ -105,12 +100,10 @@ function loadMoreSignin() {
 // Switch tab
 function switchTab(tab: 'scan' | 'signin') {
   activeTab.value = tab
-  if (tab === 'scan' && scanHistory.value.length === 0) {
+  if (tab === 'scan' && scanHistory.value.length === 0)
     loadScanHistory()
-  }
-  else if (tab === 'signin' && signinHistory.value.length === 0) {
+  else if (tab === 'signin' && signinHistory.value.length === 0)
     loadSigninHistory()
-  }
 }
 
 // Toggle only my signin filter
@@ -127,7 +120,6 @@ onMounted(async () => {
     return
   }
 
-  // Load user list for name mapping
   try {
     const users = await getUserList()
     userMap.value = new Map(users.map(u => [u.id, u.name]))
@@ -148,12 +140,10 @@ function goBack() {
 const expandedItems = ref<Set<string>>(new Set())
 
 function toggleExpand(id: string) {
-  if (expandedItems.value.has(id)) {
+  if (expandedItems.value.has(id))
     expandedItems.value.delete(id)
-  }
-  else {
+  else
     expandedItems.value.add(id)
-  }
 }
 
 // Get user name by id
@@ -163,111 +153,136 @@ function getUserName(userId: string): string {
 
 // Get status tag for signin
 function getStatusTag(signin: SigninHistory): string | null {
-  if (!signin.response_code) {
+  if (!signin.response_code)
     return 'Internal Error'
-  }
-  
+
   const responseData = JSON.stringify(signin.response_data || '')
-  
-  if (responseData.includes('return 405')) {
+
+  if (responseData.includes('return 405'))
     return '可能需要更新 cookie'
-  }
-  
-  if (responseData.includes('rollcall_closed')) {
+
+  if (responseData.includes('rollcall_closed'))
     return '签到已关闭'
-  }
-  
+
   return null
 }
 </script>
 
 <template>
-  <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
-    <div max-w-4xl mx-auto mt-10>
+  <div page-bg>
+    <div max-w-2xl mx-auto px-5 pt-8 pb-16>
       <!-- Header -->
-      <div flex items-center mb-8>
-        <button
-          bg-neutral-800 hover:bg-neutral-700 p-2 rounded mr-4
-          @click="goBack"
-        >
-          <div i-carbon-arrow-left text-xl />
+      <div mb-6 flex items-center gap-3>
+        <button btn-ghost p-1.5 @click="goBack">
+          <div i-carbon-arrow-left text-lg />
         </button>
-        <div text-2xl font-bold>历史记录</div>
+        <h1 text-xl font-semibold tracking-tight text-slate-50>历史记录</h1>
       </div>
 
       <!-- Tabs -->
-      <div flex gap-2 mb-6>
+      <div mb-6 flex rounded-lg p-0.5 class="bg-slate-900/60 border border-slate-800/50">
         <button
-          flex-1 py-3 rounded font-medium flex items-center justify-center gap-2
-          :class="activeTab === 'scan' ? 'bg-orange-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-750'"
+          flex-1 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5
+          transition-all duration-200 cursor-pointer
+          :class="activeTab === 'scan'
+            ? 'bg-slate-800/80 text-slate-100 shadow-sm'
+            : 'text-slate-500 hover:text-slate-300'"
           @click="switchTab('scan')"
         >
-          <div i-carbon-qr-code />
+          <div i-carbon-qr-code text-sm />
           <span>扫码历史</span>
         </button>
         <button
-          flex-1 py-3 rounded font-medium flex items-center justify-center gap-2
-          :class="activeTab === 'signin' ? 'bg-orange-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:bg-neutral-750'"
+          flex-1 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5
+          transition-all duration-200 cursor-pointer
+          :class="activeTab === 'signin'
+            ? 'bg-slate-800/80 text-slate-100 shadow-sm'
+            : 'text-slate-500 hover:text-slate-300'"
           @click="switchTab('signin')"
         >
-          <div i-carbon-checkmark />
+          <div i-carbon-checkmark text-sm />
           <span>签到历史</span>
         </button>
       </div>
 
       <!-- Error -->
-      <div v-if="error" bg-red-900 bg-opacity-20 border-1 border-red-700 rounded p-4 text-red-400 text-sm mb-6>
+      <div v-if="error" mb-4 rounded-lg p-3 text-rose-400 text-xs class="bg-rose-500/10 border border-rose-500/20">
         {{ error }}
       </div>
 
-      <!-- Scan History Tab -->
+      <!-- ═══ Scan History Tab ═══ -->
       <div v-if="activeTab === 'scan'">
-        <div v-if="loading && scanHistory.length === 0" text-center py-10>
-          <div i-carbon-loading animate-spin text-4xl />
+        <!-- Skeleton -->
+        <div v-if="loading && scanHistory.length === 0" space-y-2>
+          <div v-for="i in 4" :key="i" card p-4 animate-pulse>
+            <div flex items-center gap-3>
+              <div w-8 h-8 rounded-lg bg-slate-800 />
+              <div flex-1>
+                <div h-4 w-20 rounded bg-slate-800 mb-1.5 />
+                <div h-3 w-32 rounded class="bg-slate-800/50" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div v-else-if="scanHistory.length === 0" text-center py-10 text-neutral-500>
-          暂无扫码记录
+        <!-- Empty -->
+        <div v-else-if="scanHistory.length === 0" py-16 text-center>
+          <div i-carbon-scan text-4xl text-slate-800 mx-auto mb-3 />
+          <p text-sm text-slate-600>暂无扫码记录</p>
         </div>
 
-        <div v-else space-y-3>
+        <!-- List -->
+        <div v-else space-y-2>
           <div
             v-for="scan in scanHistory"
             :key="scan.id"
-            bg-neutral-800 border-1 border-neutral-700 rounded-lg overflow-hidden
+            card overflow-hidden
           >
-            <div p-4 cursor-pointer @click="toggleExpand(scan.id)">
-              <div flex items-start justify-between>
-                <div flex-1 mr-4>
-                  <div text-base font-medium text-neutral-200 mb-1>
-                    {{ getUserName(scan.user_id) }}
-                  </div>
-                  <div text-xs font-mono text-neutral-500 break-all>
-                    {{ scan.result.substring(0, 60) }}{{ scan.result.length > 60 ? '...' : '' }}
-                  </div>
-                  <div text-xs text-neutral-500 mt-2>
-                    {{ formatRelativeTime(scan.created_at) }}
+            <button
+              w-full text-left p-4 transition-colors duration-200 cursor-pointer
+              class="hover:bg-slate-800/30"
+              @click="toggleExpand(scan.id)"
+            >
+              <div flex items-center gap-3>
+                <div w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 class="bg-slate-800/80">
+                  <div i-carbon-qr-code text-sm text-slate-400 />
+                </div>
+                <div flex-1 min-w-0>
+                  <div text-sm text-slate-200>{{ getUserName(scan.user_id) }}</div>
+                  <div text-xs font-mono text-slate-600 truncate mt-0.5>
+                    {{ scan.result.substring(0, 50) }}{{ scan.result.length > 50 ? '...' : '' }}
                   </div>
                 </div>
-                <div
-                  i-carbon-chevron-down text-xl text-neutral-500 transition-transform
-                  :class="expandedItems.has(scan.id) ? 'rotate-180' : ''"
-                />
+                <div flex items-center gap-2>
+                  <span text-xs text-slate-600>{{ formatRelativeTime(scan.created_at) }}</span>
+                  <div
+                    i-carbon-chevron-down text-slate-600 text-sm transition-transform duration-200
+                    :class="expandedItems.has(scan.id) ? 'rotate-180' : ''"
+                  />
+                </div>
               </div>
-            </div>
+            </button>
 
-            <div
-              v-if="expandedItems.has(scan.id)"
-              bg-neutral-900 p-4 border-t-1 border-neutral-700
-            >
-              <div text-xs text-neutral-400 mb-2>完整结果：</div>
-              <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
+            <!-- Expanded detail -->
+            <div v-if="expandedItems.has(scan.id)" border-t p-4 class="border-slate-800/50 bg-slate-950/40">
+              <div text-xs text-slate-500 mb-1.5>完整结果</div>
+              <div
+                text-xs font-mono
+                p-3 rounded-lg break-all text-slate-400
+                class="bg-slate-900/60 border border-slate-800/50"
+              >
                 {{ scan.result }}
               </div>
-              <div text-xs text-neutral-500 mt-3>
-                <div>ID: {{ scan.id }}</div>
-                <div>时间：{{ formatDate(scan.created_at) }}</div>
-                <div>扫码者：{{ getUserName(scan.user_id) }}</div>
+              <div text-xs text-slate-600 mt-3 space-y-0.5>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-tag text-xs /><span>{{ scan.id }}</span>
+                </div>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-time text-xs /><span>{{ formatDate(scan.created_at) }}</span>
+                </div>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-user text-xs /><span>{{ getUserName(scan.user_id) }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -275,7 +290,7 @@ function getStatusTag(signin: SigninHistory): string | null {
           <!-- Load More -->
           <button
             v-if="scanHasMore"
-            w-full bg-neutral-800 hover:bg-neutral-750 py-3 rounded text-sm
+            btn-secondary w-full py-2.5 text-xs
             :disabled="loading"
             @click="loadMoreScan"
           >
@@ -284,89 +299,138 @@ function getStatusTag(signin: SigninHistory): string | null {
         </div>
       </div>
 
-      <!-- Signin History Tab -->
+      <!-- ═══ Signin History Tab ═══ -->
       <div v-if="activeTab === 'signin'">
-        <!-- Filter Option -->
+        <!-- Filter -->
         <div mb-4 flex items-center justify-end>
-          <label flex items-center gap-2 cursor-pointer text-sm>
-            <input
-              v-model="onlyMySignin"
-              type="checkbox"
-              class="w-4 h-4 rounded border-neutral-600 bg-neutral-800 text-orange-600 focus:ring-orange-500 focus:ring-offset-neutral-900"
-              @change="toggleOnlyMySignin"
-            >
-            <span text-neutral-300>仅查看我的签到</span>
+          <label flex items-center gap-2 cursor-pointer text-xs>
+            <div relative inline-block h-4 w-7>
+              <input
+                v-model="onlyMySignin"
+                type="checkbox"
+                class="peer sr-only"
+                @change="toggleOnlyMySignin"
+              >
+              <div
+                class="absolute inset-0 rounded-full cursor-pointer transition-colors duration-200"
+                :class="onlyMySignin ? 'bg-emerald-500' : 'bg-slate-700'"
+              />
+              <div
+                class="absolute top-0.5 left-0.5 h-3 w-3 rounded-full pointer-events-none transition-transform duration-200 bg-white shadow-sm"
+                :class="onlyMySignin ? 'translate-x-3' : ''"
+              />
+            </div>
+            <span text-slate-400>仅查看我的签到</span>
           </label>
         </div>
 
-        <div v-if="loading && signinHistory.length === 0" text-center py-10>
-          <div i-carbon-loading animate-spin text-4xl />
+        <!-- Skeleton -->
+        <div v-if="loading && signinHistory.length === 0" space-y-2>
+          <div v-for="i in 4" :key="i" card p-4 animate-pulse>
+            <div flex items-center gap-3>
+              <div w-8 h-8 rounded-lg bg-slate-800 />
+              <div flex-1>
+                <div h-4 w-24 rounded bg-slate-800 mb-1.5 />
+                <div h-3 w-16 rounded class="bg-slate-800/50" />
+              </div>
+              <div h-5 w-10 rounded-full bg-slate-800 />
+            </div>
+          </div>
         </div>
 
-        <div v-else-if="signinHistory.length === 0" text-center py-10 text-neutral-500>
-          暂无签到记录
+        <!-- Empty -->
+        <div v-else-if="signinHistory.length === 0" py-16 text-center>
+          <div i-carbon-checkmark-outline text-4xl text-slate-800 mx-auto mb-3 />
+          <p text-sm text-slate-600>暂无签到记录</p>
         </div>
 
-        <div v-else space-y-3>
+        <!-- List -->
+        <div v-else space-y-2>
           <div
-            v-for="signin in signinHistory"
-            :key="signin.id"
-            bg-neutral-800 border-1 border-neutral-700 rounded-lg overflow-hidden
+            v-for="si in signinHistory"
+            :key="si.id"
+            card overflow-hidden
           >
-            <div p-4 cursor-pointer @click="toggleExpand(signin.id)">
-              <div flex items-start justify-between>
-                <div flex-1>
-                  <div flex items-center gap-2 mb-2>
-                    <div text-base font-medium text-neutral-200>
-                      {{ getUserName(signin.user_id) }}
-                    </div>
-                    <div
-                      text-xs px-2 py-1 rounded
-                      :class="signin.response_code === 200 ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'"
+            <button
+              w-full text-left p-4 transition-colors duration-200 cursor-pointer
+              class="hover:bg-slate-800/30"
+              @click="toggleExpand(si.id)"
+            >
+              <div flex items-center gap-3>
+                <div
+                  w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0
+                  :class="si.response_code === 200
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-rose-500/10 text-rose-400'"
+                >
+                  <div
+                    :class="si.response_code === 200 ? 'i-carbon-checkmark' : 'i-carbon-close'"
+                    text-sm
+                  />
+                </div>
+                <div flex-1 min-w-0>
+                  <div flex items-center gap-2>
+                    <span text-sm text-slate-200>{{ getUserName(si.user_id) }}</span>
+                    <span
+                      text-xs px-1.5 py-0.5 rounded-full font-mono
+                      :class="si.response_code === 200
+                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'"
                     >
-                      {{ signin.response_code || 'N/A' }}
-                    </div>
-                    <div
-                      v-if="getStatusTag(signin)"
-                      text-xs px-2 py-1 rounded bg-yellow-900 text-yellow-300
+                      {{ si.response_code || 'N/A' }}
+                    </span>
+                    <span
+                      v-if="getStatusTag(si)"
+                      text-xs px-1.5 py-0.5 rounded-full
+                      class="bg-amber-500/10 text-amber-400 border border-amber-500/20"
                     >
-                      {{ getStatusTag(signin) }}
-                    </div>
+                      {{ getStatusTag(si) }}
+                    </span>
                   </div>
-                  <div text-xs text-neutral-500>
-                    {{ formatRelativeTime(signin.created_at) }}
-                  </div>
+                  <div text-xs text-slate-600 mt-0.5>{{ formatRelativeTime(si.created_at) }}</div>
                 </div>
                 <div
-                  i-carbon-chevron-down text-xl text-neutral-500 transition-transform
-                  :class="expandedItems.has(signin.id) ? 'rotate-180' : ''"
+                  i-carbon-chevron-down text-slate-600 text-sm transition-transform duration-200
+                  :class="expandedItems.has(si.id) ? 'rotate-180' : ''"
                 />
               </div>
-            </div>
+            </button>
 
-            <div
-              v-if="expandedItems.has(signin.id)"
-              bg-neutral-900 p-4 border-t-1 border-neutral-700 space-y-3
-            >
+            <!-- Expanded detail -->
+            <div v-if="expandedItems.has(si.id)" border-t p-4 space-y-3 class="border-slate-800/50 bg-slate-950/40">
               <div>
-                <div text-xs text-neutral-400 mb-2>请求数据：</div>
-                <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
-                  {{ signin.request_data }}
+                <div text-xs text-slate-500 mb-1>请求数据</div>
+                <div
+                  text-xs font-mono
+                  p-3 rounded-lg break-all text-slate-400
+                  class="bg-slate-900/60 border border-slate-800/50"
+                >
+                  {{ si.request_data }}
                 </div>
               </div>
-
               <div>
-                <div text-xs text-neutral-400 mb-2>响应数据：</div>
-                <div text-xs font-mono bg-neutral-800 p-3 rounded break-all>
-                  {{ signin.response_data }}
+                <div text-xs text-slate-500 mb-1>响应数据</div>
+                <div
+                  text-xs font-mono
+                  p-3 rounded-lg break-all text-slate-400
+                  class="bg-slate-900/60 border border-slate-800/50"
+                >
+                  {{ si.response_data }}
                 </div>
               </div>
-
-              <div text-xs text-neutral-500>
-                <div>ID: {{ signin.id }}</div>
-                <div>时间：{{ formatDate(signin.created_at) }}</div>
-                <div>签到者：{{ getUserName(signin.user_id) }}</div>
-                <div>Cookie: {{ signin.cookie.substring(0, 40) }}...</div>
+              <div text-xs text-slate-600 space-y-0.5>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-tag text-xs /><span>{{ si.id }}</span>
+                </div>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-time text-xs /><span>{{ formatDate(si.created_at) }}</span>
+                </div>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-user text-xs /><span>{{ getUserName(si.user_id) }}</span>
+                </div>
+                <div flex items-center gap-1.5>
+                  <div i-carbon-cookie text-xs /><span>{{ si.cookie.substring(0, 40) }}...</span>
+                </div>
               </div>
             </div>
           </div>
@@ -374,7 +438,7 @@ function getStatusTag(signin: SigninHistory): string | null {
           <!-- Load More -->
           <button
             v-if="signinHasMore"
-            w-full bg-neutral-800 hover:bg-neutral-750 py-3 rounded text-sm
+            btn-secondary w-full py-2.5 text-xs
             :disabled="loading"
             @click="loadMoreSignin"
           >

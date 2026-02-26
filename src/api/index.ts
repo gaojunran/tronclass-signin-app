@@ -203,12 +203,13 @@ export async function updateUserAuto(
 export async function signin(
   scan_result: string,
   user_id: string,
+  notify?: boolean,
 ): Promise<SigninResponse> {
   const ua_info = await getBrowserInfo();
 
   return fetchAPI<SigninResponse>("/signin", {
     method: "POST",
-    body: JSON.stringify({ ua_info, scan_result, user_id }),
+    body: JSON.stringify({ ua_info, scan_result, user_id, notify }),
   });
 }
 
@@ -219,12 +220,13 @@ export async function signin(
 export async function signinDigital(
   user_id: string,
   data?: string,
+  notify?: boolean,
 ): Promise<DigitalSigninResponse> {
   const ua_info = await getBrowserInfo();
 
   return fetchAPI<DigitalSigninResponse>("/signin-digital", {
     method: "POST",
-    body: JSON.stringify({ ua_info, user_id, data }),
+    body: JSON.stringify({ ua_info, user_id, data, notify }),
   });
 }
 

@@ -1,203 +1,203 @@
 <script setup lang="ts">
 import type {
+  DigitalSigninResponse,
   ScanHistory,
   SigninHistory,
   SigninResponse,
-  DigitalSigninResponse,
-  UserWithCookie,
   TodoItem,
-} from "~/types/index";
-import { formatRelativeTime } from "~/utils";
-import { isTauri } from "~/utils/tauri";
+  UserWithCookie,
+} from '~/types/index'
 import {
-  getUserList,
-  signin,
-  signinDigital,
   getScanHistory,
   getSigninHistory,
   getTodos,
-} from "~/api";
-import { useQRScanner } from "~/composables/qrScanner";
-import { useQRPhoto } from "~/composables/qrPhoto";
-import { useTauriQRScanner } from "~/composables/tauriQrScanner";
+  getUserList,
+  signin,
+  signinDigital,
+} from '~/api'
+import { useQRPhoto } from '~/composables/qrPhoto'
+import { useQRScanner } from '~/composables/qrScanner'
+import { useTauriQRScanner } from '~/composables/tauriQrScanner'
+import { formatRelativeTime } from '~/utils'
+import { isTauri } from '~/utils/tauri'
 
 defineOptions({
-  name: "IndexPage",
-});
+  name: 'IndexPage',
+})
 
-const userStore = useUserStore();
-const router = useRouter();
+const userStore = useUserStore()
+const router = useRouter()
 
 // State
-const step = ref<"config" | "select-user" | "main">("config");
-const apiUrl = ref("");
-const users = ref<UserWithCookie[]>([]);
-const loading = ref(false);
-const error = ref("");
+const step = ref<'config' | 'select-user' | 'main'>('config')
+const apiUrl = ref('')
+const users = ref<UserWithCookie[]>([])
+const pageLoading = ref(false)
+const scanLoading = ref(false)
+const error = ref('')
 
 // Recent scan history
-const recentScans = ref<ScanHistory[]>([]);
-const lastSignin = ref<SigninHistory | null>(null);
+const recentScans = ref<ScanHistory[]>([])
+const lastSignin = ref<SigninHistory | null>(null)
 
 // Todos
-const todos = ref<TodoItem[]>([]);
-const todosError = ref<string>("");
-const todosLoading = ref(false);
+const todos = ref<TodoItem[]>([])
+const todosError = ref<string>('')
+const todosLoading = ref(false)
 
 // User map for displaying names
-const userMap = ref<Map<string, string>>(new Map());
+const userMap = ref<Map<string, string>>(new Map())
 
 // QR Scanner
-const showScanner = ref(false);
-const videoElement = ref<HTMLVideoElement | null>(null);
-const { startScanning, stopScanning, isScanning } = useQRScanner();
-const { triggerFileInput, isProcessing } = useQRPhoto();
+const showScanner = ref(false)
+const videoElement = ref<HTMLVideoElement | null>(null)
+const { startScanning, stopScanning, isScanning, scannerMode } = useQRScanner()
+const { triggerFileInput, isProcessing: _isProcessing } = useQRPhoto()
 const {
   startScanning: startTauriScanning,
   stopScanning: stopTauriScanning,
-  isScanning: isTauriScanning,
-} = useTauriQRScanner();
+  isScanning: _isTauriScanning,
+} = useTauriQRScanner()
 
 // Scan result display
-const scanResult = ref<SigninResponse | null>(null);
+const scanResult = ref<SigninResponse | null>(null)
 
 // Digital signin dialog
-const showDigitalDialog = ref(false);
-const digitalCode = ref("");
-const digitalResult = ref<DigitalSigninResponse | null>(null);
+const showDigitalDialog = ref(false)
+const digitalCode = ref('')
+const digitalResult = ref<DigitalSigninResponse | null>(null)
 
 // Initialize
 onMounted(async () => {
   if (userStore.apiEndpoint) {
-    apiUrl.value = userStore.apiEndpoint;
+    apiUrl.value = userStore.apiEndpoint
     if (userStore.userId) {
-      step.value = "main";
-      await loadMainData();
-    } else {
-      step.value = "select-user";
-      await loadUsers();
+      step.value = 'main'
+      await loadMainData()
+    }
+    else {
+      step.value = 'select-user'
+      await loadUsers()
     }
   }
-});
+})
 
 // Load users
 async function loadUsers() {
   try {
-    loading.value = true;
-    error.value = "";
-    users.value = await getUserList();
-    // Build user map
-    userMap.value = new Map(users.value.map((u) => [u.id, u.name]));
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "加载用户列表失败";
-  } finally {
-    loading.value = false;
+    pageLoading.value = true
+    error.value = ''
+    users.value = await getUserList()
+    userMap.value = new Map(users.value.map(u => [u.id, u.name]))
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '加载用户列表失败'
+  }
+  finally {
+    pageLoading.value = false
   }
 }
 
 // Set API endpoint
 async function setApiEndpoint() {
   if (!apiUrl.value.trim()) {
-    error.value = "请输入 API 端点 URL";
-    return;
+    error.value = '请输入 API 端点 URL'
+    return
   }
 
-  // Backdoor: if input is "613614", set to specific URL
-  if (apiUrl.value.trim() === "613614") {
-    apiUrl.value = "https://api.codenebula.top/tronclass";
+  if (apiUrl.value.trim() === '613614') {
+    apiUrl.value = 'https://api.codenebula.top/tronclass'
   }
 
-  userStore.setApiEndpoint(apiUrl.value.trim());
-  step.value = "select-user";
-  await loadUsers();
+  userStore.setApiEndpoint(apiUrl.value.trim())
+  step.value = 'select-user'
+  await loadUsers()
 }
 
 // Select user
 function selectUser(user: UserWithCookie) {
-  userStore.setUserId(user.id);
-  userStore.setUserName(user.name);
-  step.value = "main";
-  loadMainData();
+  userStore.setUserId(user.id)
+  userStore.setUserName(user.name)
+  step.value = 'main'
+  loadMainData()
 }
 
 // Create new user
 function createNewUser() {
-  router.push("/create-user");
+  router.push('/create-user')
 }
 
 // Load main page data
 async function loadMainData() {
   try {
-    loading.value = true;
-    todosError.value = "";
+    pageLoading.value = true
+    todosError.value = ''
     const [scans, signins, allUsers] = await Promise.all([
       getScanHistory(3),
       getSigninHistory(1, userStore.userId),
       getUserList(),
-    ]);
-    recentScans.value = scans;
-    lastSignin.value = signins.length > 0 ? signins[0] : null;
-    // Build user map
-    userMap.value = new Map(allUsers.map((u) => [u.id, u.name]));
+    ])
+    recentScans.value = scans
+    lastSignin.value = signins.length > 0 ? signins[0] : null
+    userMap.value = new Map(allUsers.map(u => [u.id, u.name]))
 
-    // Load todos separately with 5s timeout, won't block UI
-    todosLoading.value = true;
+    todosLoading.value = true
     try {
       const todosData = await Promise.race([
         getTodos(userStore.userId),
         new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("加载待办事项超时")), 5000),
+          setTimeout(() => reject(new Error('加载待办事项超时')), 5000),
         ),
-      ]);
-      todos.value = todosData.todo_list || [];
-    } catch (err) {
-      todosError.value =
-        err instanceof Error ? err.message : "加载待办事项失败";
-      console.error("加载待办事项失败:", err);
-    } finally {
-      todosLoading.value = false;
+      ])
+      todos.value = todosData.todo_list || []
     }
-  } catch (err) {
-    console.error("加载数据失败:", err);
-  } finally {
-    loading.value = false;
+    catch (err) {
+      todosError.value
+        = err instanceof Error ? err.message : '加载待办事项失败'
+      console.error('加载待办事项失败:', err)
+    }
+    finally {
+      todosLoading.value = false
+    }
+  }
+  catch (err) {
+    console.error('加载数据失败:', err)
+  }
+  finally {
+    pageLoading.value = false
   }
 }
 
 // Start QR scanning
 async function startQRScan() {
-  scanResult.value = null;
-  digitalResult.value = null;
+  scanResult.value = null
+  digitalResult.value = null
 
-  // Check scan mode
-  if (userStore.scanMode === "photo") {
-    // Photo upload mode
-    const input = triggerFileInput(handleScanResult);
-    input.click();
-  } else {
-    // Video stream mode (default)
-    // Check if running in Tauri environment
+  if (userStore.scanMode === 'photo') {
+    const input = triggerFileInput(handleScanResult)
+    input.click()
+  }
+  else {
     if (isTauri()) {
-      // Use Tauri barcode scanner
       try {
-        await startTauriScanning(handleScanResult);
-      } catch (err) {
-        console.warn("Tauri扫码失败，fallback到调试模式:", err);
-        // Fallback to debug mode using last scan result
-        await debugWithLastResult();
+        await startTauriScanning(handleScanResult)
       }
-    } else {
-      // Use web-based QR scanner
-      showScanner.value = true;
-      await nextTick();
+      catch (err) {
+        console.warn('Tauri扫码失败，fallback到调试模式:', err)
+        await debugWithLastResult()
+      }
+    }
+    else {
+      showScanner.value = true
+      await nextTick()
 
       if (videoElement.value) {
         try {
-          await startScanning(videoElement.value, handleScanResult);
-        } catch (err) {
-          console.warn("无法启动摄像头，fallback到调试模式:", err);
-          // Fallback to debug mode using last scan result
-          await debugWithLastResult();
+          await startScanning(videoElement.value, handleScanResult)
+        }
+        catch (err) {
+          console.warn('无法启动摄像头，fallback到调试模式:', err)
+          await debugWithLastResult()
         }
       }
     }
@@ -206,812 +206,665 @@ async function startQRScan() {
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  // Only stop scanning if in video mode
-  if (userStore.scanMode === "video") {
+  if (userStore.scanMode === 'video') {
     if (isTauri()) {
-      stopTauriScanning();
-    } else {
-      stopScanning();
+      stopTauriScanning()
+    }
+    else {
+      stopScanning()
     }
   }
 
-  loading.value = true;
+  scanLoading.value = true
 
   try {
-    const response = await signin(result, userStore.userId);
-    scanResult.value = response;
-    await loadMainData();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "签到失败";
-  } finally {
-    loading.value = false;
-    showScanner.value = false;
+    const response = await signin(result, userStore.userId, userStore.notifyEnabled)
+    scanResult.value = response
+    await loadMainData()
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '签到失败'
+  }
+  finally {
+    scanLoading.value = false
+    showScanner.value = false
   }
 }
 
 // Close scanner
 function closeScanner() {
   if (isTauri()) {
-    stopTauriScanning();
-  } else {
-    stopScanning();
+    stopTauriScanning()
   }
-  showScanner.value = false;
+  else {
+    stopScanning()
+  }
+  showScanner.value = false
 }
 
-// Navigate to settings
+// Navigate
 function goToSettings() {
-  router.push("/settings");
+  router.push('/settings')
 }
 
-// Navigate to history
 function goToHistory() {
-  router.push("/history");
+  router.push('/history')
 }
 
 // Get user name by id
 function getUserName(userId: string): string {
-  return userMap.value.get(userId) || "未知用户";
+  return userMap.value.get(userId) || '未知用户'
 }
 
 // Start digital signin
 function startDigitalSignin() {
-  scanResult.value = null;
-  digitalResult.value = null;
-  digitalCode.value = "";
-  showDigitalDialog.value = true;
+  scanResult.value = null
+  digitalResult.value = null
+  digitalCode.value = ''
+  showDigitalDialog.value = true
 }
 
 // Handle digital signin
 async function handleDigitalSignin() {
-  loading.value = true;
-  error.value = "";
+  scanLoading.value = true
+  error.value = ''
 
   try {
     const response = await signinDigital(
       userStore.userId,
       digitalCode.value || undefined,
-    );
-    digitalResult.value = response;
-    scanResult.value = null; // Clear scan result
-    showDigitalDialog.value = false; // Close dialog first
-    await loadMainData();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "数字签到失败";
-  } finally {
-    loading.value = false;
+      userStore.notifyEnabled,
+    )
+    digitalResult.value = response
+    scanResult.value = null
+    showDigitalDialog.value = false
+    await loadMainData()
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '数字签到失败'
+  }
+  finally {
+    scanLoading.value = false
   }
 }
 
 // Close digital dialog
 function closeDigitalDialog() {
-  showDigitalDialog.value = false;
-  digitalCode.value = "";
+  showDigitalDialog.value = false
+  digitalCode.value = ''
 }
 
 // Debug: use last scan result from backend
 async function debugWithLastResult() {
-  stopScanning();
-  loading.value = true;
+  stopScanning()
+  scanLoading.value = true
 
   try {
-    // Fetch the most recent scan result from backend
-    const lastScans = await getScanHistory(1);
+    const lastScans = await getScanHistory(1)
     if (lastScans.length === 0) {
-      error.value = "没有历史扫描记录";
-      loading.value = false;
-      showScanner.value = false;
-      return;
+      error.value = '没有历史扫描记录'
+      scanLoading.value = false
+      showScanner.value = false
+      return
     }
 
-    const lastScanResult = lastScans[0].result;
-    const response = await signin(lastScanResult, userStore.userId);
-    scanResult.value = response;
-    await loadMainData();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "签到失败";
-  } finally {
-    loading.value = false;
-    showScanner.value = false;
+    const lastScanResult = lastScans[0].result
+    const response = await signin(lastScanResult, userStore.userId, userStore.notifyEnabled)
+    scanResult.value = response
+    await loadMainData()
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '签到失败'
+  }
+  finally {
+    scanLoading.value = false
+    showScanner.value = false
   }
 }
 </script>
 
 <template>
-  <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
-    <!-- Step 1: API Configuration -->
-    <div v-if="step === 'config'" max-w-md mx-auto mt-20>
-      <div text-3xl font-bold mb-8 flex items-center>
-        <div i-carbon-qr-code inline-block mr-2 />
-        畅课签到助手
+  <div page-bg>
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Step 1: API Configuration              -->
+    <!-- ═══════════════════════════════════════ -->
+    <div v-if="step === 'config'" mx-auto max-w-sm px-6 pt-28>
+      <!-- Brand -->
+      <div mb-12 text-center>
+        <div
+          class="mx-auto mb-5 h-14 w-14 flex items-center justify-center border border-emerald-500/20 rounded-2xl from-emerald-500/20 to-emerald-500/5 bg-linear-to-br"
+        >
+          <div i-carbon-qr-code text-2xl text-emerald-400 />
+        </div>
+        <h1 text-2xl text-slate-50 font-semibold tracking-tight>
+          畅课签到助手
+        </h1>
+        <p mt-2 text-sm text-slate-500>
+          连接你的 API 端点以开始
+        </p>
       </div>
 
-      <div mb-6>
-        <label text-sm text-neutral-400 mb-2 block>API 端点 URL</label>
+      <!-- Input -->
+      <div mb-4>
         <input
           v-model="apiUrl"
           type="url"
           placeholder="https://api.example.com"
-          bg-neutral-800
-          border-1
-          border-neutral-700
-          rounded
-          px-4
-          py-3
-          w-full
-          focus:outline-none
-          focus:border-neutral-500
+          input-base w-full px-4 py-3 text-sm
           @keydown.enter="setApiEndpoint"
-        />
+        >
       </div>
 
       <button
-        bg-neutral-700
-        hover:bg-neutral-600
-        px-6
-        py-3
-        rounded
-        w-full
-        :disabled="loading"
+        btn-primary w-full py-3 text-sm
+        :disabled="pageLoading"
         @click="setApiEndpoint"
       >
-        {{ loading ? "连接中..." : "继续" }}
+        {{ pageLoading ? "连接中..." : "继续" }}
       </button>
 
-      <div v-if="error" mt-4 text-red-400 text-sm>
+      <div
+        v-if="error" mt-5
+        class="border border-rose-500/20 rounded-lg bg-rose-500/10 p-3 text-xs text-rose-400"
+      >
         {{ error }}
       </div>
     </div>
 
-    <!-- Step 2: User Selection -->
-    <div v-else-if="step === 'select-user'" max-w-2xl mx-auto mt-10>
-      <div text-2xl font-bold mb-6>选择你的账号</div>
-
-      <div v-if="loading" text-center py-10>
-        <div i-carbon-loading animate-spin text-4xl />
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Step 2: User Selection                 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div v-else-if="step === 'select-user'" mx-auto max-w-lg px-6 pt-20>
+      <div mb-8>
+        <h1 text-2xl text-slate-50 font-semibold tracking-tight>
+          选择账号
+        </h1>
+        <p mt-1 text-sm text-slate-500>
+          选择一个已有账号或创建新账号
+        </p>
       </div>
 
-      <div v-else>
-        <div space-y-3 mb-6>
-          <div
-            v-for="user in users"
-            :key="user.id"
-            bg-neutral-800
-            hover:bg-neutral-750
-            border-1
-            border-neutral-700
-            rounded
-            p-4
-            cursor-pointer
-            @click="selectUser(user)"
-          >
-            <div flex items-center justify-between>
-              <div>
-                <div text-lg font-medium>{{ user.name }}</div>
-                <div text-sm text-neutral-400>
-                  自动签到：{{ user.is_auto ? "是" : "否" }}
-                </div>
-                <div v-if="user.expires" text-xs text-neutral-500 mt-1>
-                  Cookie 过期时间：{{
-                    new Date(user.expires).toLocaleDateString()
-                  }}
-                </div>
-              </div>
-              <div i-carbon-chevron-right text-xl text-neutral-500 />
+      <!-- Skeleton loading -->
+      <div v-if="pageLoading" space-y-3>
+        <div v-for="i in 3" :key="i" card animate-pulse p-4>
+          <div flex items-center gap-3>
+            <div h-9 w-9 rounded-full bg-slate-800 />
+            <div flex-1>
+              <div class="mb-2 h-4 w-24 rounded bg-slate-800" />
+              <div class="h-3 w-16 rounded bg-slate-800/60" />
             </div>
           </div>
         </div>
+      </div>
+
+      <div v-else>
+        <div mb-5 space-y-2.5>
+          <button
+            v-for="user in users"
+            :key="user.id"
+            card-hover w-full p-4 text-left
+            @click="selectUser(user)"
+          >
+            <div flex items-center gap-3>
+              <!-- Avatar -->
+              <div
+                class="h-9 w-9 flex items-center justify-center border border-emerald-500/20 rounded-full from-emerald-500/20 to-sky-500/20 bg-linear-to-br text-sm text-emerald-300 font-medium"
+              >
+                {{ [...user.name][0] }}
+              </div>
+              <div flex-1>
+                <div text-sm text-slate-100 font-medium>
+                  {{ user.name }}
+                </div>
+                <div mt-0.5 flex items-center gap-2 text-xs text-slate-500>
+                  <span flex items-center gap-1>
+                    <div
+                      h-1.5 w-1.5 rounded-full
+                      :class="user.is_auto ? 'bg-emerald-400' : 'bg-slate-600'"
+                    />
+                    {{ user.is_auto ? "自动签到" : "手动签到" }}
+                  </span>
+                  <template v-if="user.expires">
+                    <span text-slate-700>·</span>
+                    <span text-slate-600>{{ new Date(user.expires).toLocaleDateString() }} 过期</span>
+                  </template>
+                </div>
+              </div>
+              <div i-carbon-chevron-right text-slate-600 />
+            </div>
+          </button>
+        </div>
 
         <button
-          bg-neutral-700
-          hover:bg-neutral-600
-          px-6
-          py-3
-          rounded
-          w-full
+          btn-secondary w-full flex items-center justify-center gap-2 border-dashed py-3 text-sm
           @click="createNewUser"
         >
-          <div i-carbon-add inline-block mr-2 />
+          <div i-carbon-add text-base />
           创建新用户
         </button>
       </div>
 
-      <div v-if="error" mt-4 text-red-400 text-sm>
+      <div
+        v-if="error" mt-5
+        class="border border-rose-500/20 rounded-lg bg-rose-500/10 p-3 text-xs text-rose-400"
+      >
         {{ error }}
       </div>
     </div>
 
-    <!-- Step 3: Main Page -->
-    <div v-else-if="step === 'main'" max-w-4xl mx-auto mt-10>
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Step 3: Main Dashboard                 -->
+    <!-- ═══════════════════════════════════════ -->
+    <div v-else-if="step === 'main'" mx-auto max-w-2xl px-5 pb-16 pt-8>
       <!-- Header -->
-      <div flex items-center justify-between mb-8>
-        <div>
-          <div text-2xl font-bold>欢迎，{{ userStore.userName }}</div>
-          <div text-sm text-neutral-400 mt-1>
-            上次签到：{{
-              lastSignin
-                ? formatRelativeTime(lastSignin.created_at)
-                : "从未签到"
-            }}
+      <div mb-8 flex items-center justify-between>
+        <div flex items-center gap-3>
+          <!-- Avatar -->
+          <div
+            class="w-10 h-10 flex-shrink-0 flex items-center justify-center border border-emerald-500/20 rounded-full from-emerald-500/20 to-sky-500/20 bg-linear-to-br text-sm text-emerald-300 font-semibold"
+          >
+            {{ [...(userStore.userName || '?')][0] }}
+          </div>
+          <div>
+            <h1 text-lg text-slate-50 font-semibold tracking-tight>
+              {{ userStore.userName }}
+            </h1>
+            <p text-xs text-slate-500>
+              {{ lastSignin ? `上次签到 ${formatRelativeTime(lastSignin.created_at)}` : "尚未签到" }}
+            </p>
           </div>
         </div>
         <button
-          bg-neutral-800
-          hover:bg-neutral-700
-          p-3
-          rounded
+          class="btn-ghost rounded-lg p-2.5 hover:bg-slate-800/80"
           @click="goToSettings"
         >
-          <div i-carbon-settings text-xl />
+          <div i-carbon-settings text-lg text-slate-400 />
         </button>
       </div>
 
-      <!-- Scan Result Display -->
+      <!-- ── Scan Result ── -->
       <div
         v-if="scanResult"
-        bg-neutral-800
-        border-1
-        border-neutral-700
-        rounded
-        p-6
-        mb-6
+        class="card mb-5 border-emerald-500/20 from-emerald-500/10 to-emerald-500/5 bg-linear-to-br p-5"
       >
-        <div text-lg font-bold mb-4 flex items-center>
-          <div i-carbon-checkmark-filled text-green-400 mr-2 />
-          扫码签到完成
+        <div mb-3 flex items-center gap-2>
+          <div i-carbon-checkmark-filled text-emerald-400 />
+          <span text-sm text-emerald-300 font-medium>扫码签到完成</span>
         </div>
-
-        <div>
-          <div text-sm text-neutral-400 mb-2>
-            签到结果（{{ scanResult.signin_results.length }} 人）：
-          </div>
-          <div space-y-2>
-            <div
-              v-for="signinItem in scanResult.signin_results"
-              :key="signinItem.id"
-              bg-neutral-900
-              p-3
-              rounded
-              text-sm
-            >
-              <div flex items-center justify-between mb-2>
-                <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
-                <div
-                  :class="
-                    signinItem.response_code === 200
-                      ? 'text-green-400'
-                      : signinItem.response_code === null
-                        ? 'text-yellow-400'
-                        : 'text-red-400'
-                  "
-                >
-                  {{ signinItem.response_code ?? "失败" }}
-                </div>
-              </div>
-              <!-- Show full response on failure -->
-              <div
-                v-if="signinItem.response_code !== 200"
-                mt-2
-                pt-2
-                border-t-1
-                border-neutral-800
+        <div mb-2 text-xs text-slate-500>
+          签到结果（{{ scanResult.signin_results.length }} 人）
+        </div>
+        <div space-y-1.5>
+          <div
+            v-for="item in scanResult.signin_results"
+            :key="item.id"
+            class="rounded-lg bg-slate-950/60 p-3 text-xs"
+          >
+            <div flex items-center justify-between>
+              <span text-slate-200 font-medium>{{ getUserName(item.user_id) }}</span>
+              <span
+                font-mono
+                :class="
+                  item.response_code === 200
+                    ? 'text-emerald-400'
+                    : item.response_code === null
+                      ? 'text-amber-400'
+                      : 'text-rose-400'
+                "
               >
-                <div
-                  text-xs
-                  font-mono
-                  bg-neutral-950
-                  p-2
-                  rounded
-                  text-red-400
-                  break-all
-                  max-h-40
-                  overflow-y-auto
-                >
-                  {{
-                    typeof signinItem.response_data === "string"
-                      ? signinItem.response_data
-                      : JSON.stringify(signinItem.response_data, null, 2)
-                  }}
-                </div>
+                {{ item.response_code ?? "失败" }}
+              </span>
+            </div>
+            <div v-if="item.response_code !== 200" class="mt-2 border-t border-slate-800/50 pt-2">
+              <div max-h-32 overflow-y-auto break-all text-xs text-rose-400 font-mono>
+                {{ typeof item.response_data === "string" ? item.response_data : JSON.stringify(item.response_data, null, 2) }}
               </div>
             </div>
           </div>
         </div>
-
-        <button
-          mt-4
-          bg-neutral-700
-          hover:bg-neutral-600
-          px-4
-          py-2
-          rounded
-          text-sm
-          @click="scanResult = null"
-        >
+        <button btn-ghost mt-3 text-xs @click="scanResult = null">
           关闭
         </button>
       </div>
 
-      <!-- Digital Signin Result Display -->
+      <!-- ── Digital Result ── -->
       <div
         v-if="digitalResult"
-        bg-neutral-800
-        border-1
-        border-neutral-700
-        rounded
-        p-6
-        mb-6
+        class="card mb-5 border-sky-500/20 from-sky-500/10 to-sky-500/5 bg-linear-to-br p-5"
       >
-        <div text-lg font-bold mb-4 flex items-center>
-          <div i-carbon-checkmark-filled text-blue-400 mr-2 />
-          数字签到完成
+        <div mb-3 flex items-center gap-2>
+          <div i-carbon-checkmark-filled text-sky-400 />
+          <span text-sm text-sky-300 font-medium>数字签到完成</span>
         </div>
-
-        <!-- Signin Code Display -->
-        <div mb-4>
-          <div text-sm text-neutral-400 mb-1>使用的签到码：</div>
+        <div mb-3>
+          <div mb-1 text-xs text-slate-500>
+            签到码
+          </div>
           <div
-            text-lg
-            font-mono
-            bg-neutral-900
-            p-3
-            rounded
-            text-center
-            tracking-widest
-            font-bold
-            text-blue-400
+            class="rounded-lg bg-slate-950/60 p-2.5 text-center text-sm text-sky-400 font-semibold tracking-widest font-mono"
           >
             {{
-              digitalResult.signin_results.length > 0 &&
-              digitalResult.signin_results[0].request_data?.numberCode
+              digitalResult.signin_results.length > 0
+                && digitalResult.signin_results[0].request_data?.numberCode
                 ? digitalResult.signin_results[0].request_data.numberCode
                 : "遍历破解"
             }}
           </div>
         </div>
-
-        <!-- Signin Results -->
-        <div>
-          <div text-sm text-neutral-400 mb-2>
-            签到结果（{{ digitalResult.signin_results.length }} 人）：
-          </div>
-          <div space-y-2>
-            <div
-              v-for="signinItem in digitalResult.signin_results"
-              :key="signinItem.id"
-              bg-neutral-900
-              p-3
-              rounded
-              text-sm
-            >
-              <div flex items-center justify-between mb-2>
-                <div font-medium>{{ getUserName(signinItem.user_id) }}</div>
-                <div
-                  :class="
-                    signinItem.response_code === 200
-                      ? 'text-green-400'
-                      : signinItem.response_code === null
-                        ? 'text-yellow-400'
-                        : 'text-red-400'
-                  "
-                >
-                  {{ signinItem.response_code ?? "失败" }}
-                </div>
-              </div>
-              <!-- Show full response on failure -->
-              <div
-                v-if="signinItem.response_code !== 200"
-                mt-2
-                pt-2
-                border-t-1
-                border-neutral-800
+        <div mb-2 text-xs text-slate-500>
+          签到结果（{{ digitalResult.signin_results.length }} 人）
+        </div>
+        <div space-y-1.5>
+          <div
+            v-for="item in digitalResult.signin_results"
+            :key="item.id"
+            class="rounded-lg bg-slate-950/60 p-3 text-xs"
+          >
+            <div flex items-center justify-between>
+              <span text-slate-200 font-medium>{{ getUserName(item.user_id) }}</span>
+              <span
+                font-mono
+                :class="
+                  item.response_code === 200
+                    ? 'text-emerald-400'
+                    : item.response_code === null
+                      ? 'text-amber-400'
+                      : 'text-rose-400'
+                "
               >
-                <div
-                  text-xs
-                  font-mono
-                  bg-neutral-950
-                  p-2
-                  rounded
-                  text-red-400
-                  break-all
-                  max-h-40
-                  overflow-y-auto
-                >
-                  {{
-                    typeof signinItem.response_data === "string"
-                      ? signinItem.response_data
-                      : JSON.stringify(signinItem.response_data, null, 2)
-                  }}
-                </div>
+                {{ item.response_code ?? "失败" }}
+              </span>
+            </div>
+            <div v-if="item.response_code !== 200" class="mt-2 border-t border-slate-800/50 pt-2">
+              <div max-h-32 overflow-y-auto break-all text-xs text-rose-400 font-mono>
+                {{ typeof item.response_data === "string" ? item.response_data : JSON.stringify(item.response_data, null, 2) }}
               </div>
             </div>
           </div>
         </div>
-
-        <button
-          mt-4
-          bg-neutral-700
-          hover:bg-neutral-600
-          px-4
-          py-2
-          rounded
-          text-sm
-          @click="digitalResult = null"
-        >
+        <button btn-ghost mt-3 text-xs @click="digitalResult = null">
           关闭
         </button>
       </div>
 
-      <!-- Scan Button -->
-      <button
-        bg-orange-600
-        hover:bg-orange-500
-        text-white
-        px-8
-        py-4
-        rounded-lg
-        text-lg
-        font-medium
-        w-full
-        mb-4
-        flex
-        items-center
-        justify-center
-        :disabled="isScanning"
-        @click="startQRScan"
-      >
-        <div i-carbon-qr-code mr-2 text-2xl />
-        <span>{{ isScanning ? "扫码中..." : "扫码签到" }}</span>
-      </button>
-
-      <!-- Digital Signin Button -->
-      <button
-        bg-blue-600
-        hover:bg-blue-500
-        text-white
-        px-8
-        py-4
-        rounded-lg
-        text-lg
-        font-medium
-        w-full
-        mb-8
-        flex
-        items-center
-        justify-center
-        @click="startDigitalSignin"
-      >
-        <div i-carbon-keyboard mr-2 text-2xl />
-        <span>数字签到</span>
-      </button>
-
-      <!-- Recent Scans -->
-      <div mb-8>
-        <div flex items-center justify-between mb-4>
-          <div text-lg font-bold>最近扫码</div>
-          <button
-            text-sm
-            text-neutral-400
-            hover:text-neutral-200
-            flex
-            items-center
-            gap-1
-            @click="goToHistory"
-          >
-            <span>查看全部</span>
-            <div i-carbon-chevron-right />
-          </button>
-        </div>
-
-        <div v-if="recentScans.length === 0" text-center py-8 text-neutral-500>
-          暂无扫码记录
-        </div>
-
-        <div v-else space-y-3>
-          <div
-            v-for="scan in recentScans"
-            :key="scan.id"
-            bg-neutral-800
-            border-1
-            border-neutral-700
-            rounded
-            p-4
-          >
-            <div flex items-start justify-between>
-              <div flex-1 mr-4>
-                <div text-base font-medium text-neutral-200 mb-2>
-                  {{ getUserName(scan.user_id) }}
-                </div>
-                <div text-sm text-neutral-400>
-                  {{ formatRelativeTime(scan.created_at) }}
-                </div>
-              </div>
-              <div i-carbon-qr-code text-xl text-neutral-600 />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Todos Section -->
-      <div mb-8>
-        <div text-lg font-bold mb-4>待办事项</div>
-
-        <!-- Loading State -->
-        <div v-if="todosLoading" text-center py-8>
-          <div i-carbon-loading animate-spin text-4xl text-neutral-400 />
-          <div text-neutral-500 mt-2>加载中</div>
-        </div>
-
-        <!-- Error Display -->
-        <div
-          v-else-if="todosError"
-          bg-red-900
-          bg-opacity-20
-          border-1
-          border-red-700
-          rounded
-          p-4
-          text-center
-        >
-          <div text-red-400 text-sm mb-3>{{ todosError }}</div>
-          <button
-            bg-red-700
-            hover:bg-red-600
-            px-4
-            py-2
-            rounded
-            text-sm
-            @click="router.push('/settings')"
-          >
-            前往设置刷新 Cookie
-          </button>
-        </div>
-
-        <!-- Empty State -->
-        <div v-else-if="!todosLoading && todos.length === 0" text-center py-8 text-neutral-500>
-          暂无待办事项
-        </div>
-
-        <!-- Todos List -->
-        <div v-else space-y-3>
-          <div
-            v-for="todo in todos"
-            :key="todo.id"
-            bg-neutral-800
-            border-1
-            border-neutral-700
-            rounded
-            p-4
-          >
-            <div flex items-start justify-between mb-2>
-              <div flex-1>
-                <div text-base font-medium text-neutral-200 mb-1>
-                  {{ todo.title }}
-                </div>
-                <div text-sm text-neutral-400 mb-1>
-                  {{ todo.course_name }}
-                </div>
-                <div text-xs text-neutral-500 flex items-center gap-2>
-                  <span>{{ todo.type }}</span>
-                  <span>•</span>
-                  <span
-                    >截止：{{
-                      new Date(todo.end_time).toLocaleString("zh-CN")
-                    }}</span
-                  >
-                </div>
-              </div>
-              <div
-                text-xs
-                px-2
-                py-1
-                rounded
-                :class="
-                  todo.is_locked
-                    ? 'bg-neutral-700 text-neutral-400'
-                    : 'bg-blue-900 bg-opacity-30 text-blue-400'
-                "
-              >
-                {{ todo.is_locked ? "已锁定" : "进行中" }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Error Display -->
+      <!-- ── Scan Loading Indicator ── -->
       <div
-        v-if="error"
-        bg-red-900
-        bg-opacity-20
-        border-1
-        border-red-700
-        rounded
-        p-4
-        text-red-400
-        text-sm
+        v-if="scanLoading && !showScanner"
+        class="card mb-5 flex flex-col items-center gap-3 border-emerald-500/10 p-6"
       >
-        {{ error }}
+        <div i-carbon-circle-dash animate-spin text-3xl text-emerald-400 />
+        <span text-sm text-slate-400>正在处理签到...</span>
       </div>
-    </div>
 
-    <!-- Digital Signin Dialog -->
-    <div
-      v-if="showDigitalDialog"
-      fixed
-      inset-0
-      bg-black
-      bg-opacity-90
-      z-50
-      flex
-      items-center
-      justify-center
-      p-6
-    >
-      <div max-w-md w-full bg-neutral-800 rounded-lg p-6>
-        <div flex items-center justify-between mb-4>
-          <div text-xl font-bold>数字签到</div>
-          <button
-            bg-neutral-700
-            hover:bg-neutral-600
-            p-2
-            rounded
-            @click="closeDigitalDialog"
-          >
-            <div i-carbon-close text-xl />
-          </button>
-        </div>
-
-        <div mb-4>
-          <label text-sm text-neutral-400 mb-2 block> 签到码（可选） </label>
-          <input
-            v-model="digitalCode"
-            type="text"
-            placeholder="输入数字签到码"
-            bg-neutral-900
-            border-1
-            border-neutral-700
-            rounded
-            px-4
-            py-3
-            w-full
-            text-center
-            text-2xl
-            tracking-widest
-            font-mono
-            focus:outline-none
-            focus:border-blue-500
-            @keydown.enter="handleDigitalSignin"
-          />
-          <div text-xs text-neutral-500 mt-2 text-center>
-            留空则使用遍历破解方式，签到课程由 API 后端自动确定
-          </div>
-        </div>
-
+      <!-- ══ Action Buttons ══ -->
+      <div grid grid-cols-2 mb-8 gap-3>
         <button
-          bg-blue-600
-          hover:bg-blue-500
-          text-white
-          px-6
-          py-3
-          rounded
-          w-full
-          :disabled="loading"
-          @click="handleDigitalSignin"
+          btn-primary flex items-center justify-center gap-2 py-3.5 text-sm
+          :disabled="isScanning || scanLoading"
+          @click="startQRScan"
         >
-          {{ loading ? "请稍等..." : "开始签到" }}
+          <div i-carbon-qr-code text-base />
+          <span>{{ isScanning ? "扫码中..." : "扫码签到" }}</span>
         </button>
 
-        <!-- Error Display with Full Response -->
-        <div v-if="error" mt-4>
-          <div
-            bg-neutral-900
-            border-1
-            border-red-900
-            rounded
-            p-3
-            text-xs
-            font-mono
-            text-red-400
-            break-all
-            max-h-60
-            overflow-y-auto
-          >
-            {{ error }}
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- QR Scanner Modal -->
-    <div
-      v-if="showScanner"
-      fixed
-      inset-0
-      bg-black
-      bg-opacity-90
-      z-50
-      flex
-      items-center
-      justify-center
-      p-6
-    >
-      <div max-w-2xl w-full flex flex-col>
-        <div flex items-center justify-between mb-4 flex-shrink-0>
-          <div text-xl font-bold>扫描二维码</div>
-          <div flex items-center gap-2>
-            <button
-              bg-yellow-700
-              hover:bg-yellow-600
-              px-3
-              py-2
-              rounded
-              text-sm
-              flex
-              items-center
-              gap-1
-              :disabled="loading"
-              @click="debugWithLastResult"
-            >
-              <div i-carbon-debug text-base />
-              <span>调试</span>
-            </button>
-            <button
-              v-if="!isTauri()"
-              bg-neutral-800
-              hover:bg-neutral-700
-              p-2
-              rounded
-              @click="closeScanner"
-            >
-              <div i-carbon-close text-xl />
-            </button>
-            <button
-              v-else
-              bg-neutral-800
-              hover:bg-neutral-700
-              p-2
-              rounded
-              @click="router.push('/')"
-            >
-              <div i-carbon-home text-xl />
-            </button>
-          </div>
-        </div>
-
-        <div
-          bg-neutral-900
-          rounded-lg
-          overflow-hidden
-          relative
-          flex-shrink
-          min-h-0
+        <button
+          btn-secondary flex items-center justify-center gap-2 py-3.5 text-sm
+          :disabled="scanLoading"
+          @click="startDigitalSignin"
         >
-          <video ref="videoElement" w-full h-auto max-h-70vh object-contain />
+          <div i-carbon-keyboard text-base />
+          <span>数字签到</span>
+        </button>
+      </div>
 
-          <!-- Loading Overlay -->
-          <div
-            v-if="loading"
-            absolute
-            inset-0
-            bg-black
-            bg-opacity-80
-            flex
-            flex-col
-            items-center
-            justify-center
-          >
-            <div i-carbon-circle-dash text-6xl text-orange-500 animate-spin />
-            <div text-lg text-white mt-4>正在处理签到...</div>
+      <!-- ── Page Data Loading ── -->
+      <div v-if="pageLoading && !scanResult && !digitalResult" space-y-4>
+        <div>
+          <div class="mb-3 h-4 w-20 rounded bg-slate-800" />
+          <div space-y-2>
+            <div v-for="i in 3" :key="i" card flex animate-pulse items-center justify-between p-3.5>
+              <div>
+                <div class="mb-1.5 h-4 w-20 rounded bg-slate-800" />
+                <div class="h-3 w-16 rounded bg-slate-800/50" />
+              </div>
+              <div class="h-5 w-5 rounded bg-slate-800/50" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template v-else>
+        <!-- ── Recent Scans ── -->
+        <div mb-7>
+          <div mb-3 flex items-center justify-between>
+            <h2 section-title mb-0>
+              最近扫码
+            </h2>
+            <button btn-ghost flex items-center gap-0.5 text-xs @click="goToHistory">
+              <span>查看全部</span>
+              <div i-carbon-chevron-right text-xs />
+            </button>
+          </div>
+
+          <div v-if="recentScans.length === 0" py-10 text-center>
+            <div i-carbon-scan mx-auto mb-2 text-3xl text-slate-800 />
+            <p text-xs text-slate-600>
+              暂无扫码记录
+            </p>
+          </div>
+
+          <div v-else space-y-2>
+            <div
+              v-for="scan in recentScans"
+              :key="scan.id"
+              card-hover flex items-center justify-between p-3.5
+              @click="goToHistory"
+            >
+              <div flex items-center gap-3>
+                <div class="h-8 w-8 flex items-center justify-center rounded-lg bg-slate-800/80">
+                  <div i-carbon-qr-code text-sm text-slate-400 />
+                </div>
+                <div>
+                  <div text-sm text-slate-200>
+                    {{ getUserName(scan.user_id) }}
+                  </div>
+                  <div mt-0.5 text-xs text-slate-500>
+                    {{ formatRelativeTime(scan.created_at) }}
+                  </div>
+                </div>
+              </div>
+              <div i-carbon-chevron-right text-sm text-slate-700 />
+            </div>
           </div>
         </div>
 
-        <div text-sm text-neutral-400 text-center mt-4 flex-shrink-0>
-          <span v-if="!loading">将二维码放置在框内</span>
-          <span v-else>请稍候，正在为所有用户签到</span>
+        <!-- ── Todos Section ── -->
+        <div mb-7>
+          <h2 section-title>
+            待办事项
+          </h2>
+
+          <div v-if="todosLoading" flex items-center justify-center py-10>
+            <div i-carbon-loading animate-spin text-xl text-slate-600 />
+          </div>
+
+          <div
+            v-else-if="todosError"
+            class="card border-rose-500/20 p-5 text-center"
+          >
+            <div i-carbon-warning-alt mx-auto mb-2 text-2xl text-rose-400 />
+            <div mb-2 text-xs text-rose-400>
+              {{ todosError }}
+            </div>
+            <button
+
+              btn-ghost text-xs text-rose-400 underline underline-offset-2 hover:text-rose-300
+              @click="router.push('/settings')"
+            >
+              前往设置刷新 Cookie
+            </button>
+          </div>
+
+          <div v-else-if="todos.length === 0" py-10 text-center>
+            <div i-carbon-task-complete mx-auto mb-2 text-3xl text-slate-800 />
+            <p text-xs text-slate-600>
+              暂无待办事项
+            </p>
+          </div>
+
+          <div v-else space-y-2>
+            <div
+              v-for="todo in todos"
+              :key="todo.id"
+              card p-4
+            >
+              <div flex items-start justify-between gap-3>
+                <div min-w-0 flex-1>
+                  <div truncate text-sm text-slate-200>
+                    {{ todo.title }}
+                  </div>
+                  <div mt-0.5 text-xs text-slate-500>
+                    {{ todo.course_name }}
+                  </div>
+                  <div mt-1 flex items-center gap-1.5 text-xs text-slate-600>
+                    <span>{{ todo.type }}</span>
+                    <span text-slate-700>·</span>
+                    <span>截止 {{ new Date(todo.end_time).toLocaleString("zh-CN") }}</span>
+                  </div>
+                </div>
+                <span
+                  whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium
+                  :class="
+                    todo.is_locked
+                      ? 'bg-slate-800 text-slate-500'
+                      : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+                  "
+                >
+                  {{ todo.is_locked ? "已锁定" : "进行中" }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Error ── -->
+        <div
+          v-if="error"
+          class="mb-4 border border-rose-500/20 rounded-lg bg-rose-500/10 p-3 text-xs text-rose-400"
+        >
+          {{ error }}
+        </div>
+      </template>
+    </div>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- Digital Signin Dialog                  -->
+    <!-- ═══════════════════════════════════════ -->
+    <Teleport to="body">
+      <div
+        v-if="showDigitalDialog"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-5 backdrop-blur-sm"
+      >
+        <div class="card max-w-sm w-full border-slate-700/50 p-6 shadow-2xl">
+          <div mb-5 flex items-center justify-between>
+            <h2 text-base text-slate-50 font-semibold>
+              数字签到
+            </h2>
+            <button btn-ghost p-1 @click="closeDigitalDialog">
+              <div i-carbon-close text-lg />
+            </button>
+          </div>
+
+          <div mb-4>
+            <label mb-1.5 block text-xs text-slate-400 font-medium>签到码（可选）</label>
+            <input
+              v-model="digitalCode"
+              type="text"
+              placeholder="输入数字签到码"
+              input-base w-full py-3 text-center text-lg tracking-widest font-mono
+              @keydown.enter="handleDigitalSignin"
+            >
+            <p mt-2 text-center text-xs text-slate-600>
+              留空则使用遍历破解方式
+            </p>
+          </div>
+
+          <button
+            btn-primary w-full py-3 text-sm
+            :disabled="scanLoading"
+            @click="handleDigitalSignin"
+          >
+            {{ scanLoading ? "请稍等..." : "开始签到" }}
+          </button>
+
+          <div v-if="error" mt-3>
+            <div
+              class="max-h-40 overflow-y-auto break-all border border-rose-500/20 rounded-lg bg-slate-950/80 p-2.5 text-xs text-rose-400 font-mono"
+            >
+              {{ error }}
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </Teleport>
+
+    <!-- ═══════════════════════════════════════ -->
+    <!-- QR Scanner Modal                       -->
+    <!-- ═══════════════════════════════════════ -->
+    <Teleport to="body">
+      <div
+        v-if="showScanner"
+        fixed inset-0 z-50 flex items-center justify-center bg-slate-950 p-5
+      >
+        <div max-w-xl w-full flex flex-col>
+          <div mb-4 flex flex-shrink-0 items-center justify-between>
+            <h2 text-base text-slate-50 font-semibold>
+              扫描二维码
+            </h2>
+            <div flex items-center gap-2>
+              <button
+                btn-secondary flex items-center gap-1 px-3 py-1.5 text-xs text-amber-400
+                :disabled="scanLoading"
+                @click="debugWithLastResult"
+              >
+                <div i-carbon-debug text-sm />
+                <span>调试</span>
+              </button>
+              <button v-if="!isTauri()" btn-ghost p-1.5 @click="closeScanner">
+                <div i-carbon-close text-lg />
+              </button>
+              <button v-else btn-ghost p-1.5 @click="router.push('/')">
+                <div i-carbon-home text-lg />
+              </button>
+            </div>
+          </div>
+
+          <div card relative min-h-0 flex-shrink overflow-hidden>
+            <video ref="videoElement" h-auto max-h-70vh w-full object-contain />
+            <!-- Scan Loading Overlay -->
+            <div
+              v-if="scanLoading"
+              class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/90 backdrop-blur-sm"
+            >
+              <div i-carbon-circle-dash animate-spin text-4xl text-emerald-400 />
+              <span text-sm text-slate-400>正在处理签到...</span>
+            </div>
+          </div>
+
+          <!-- Scanner status -->
+          <div mt-3 flex-shrink-0 text-center space-y-1>
+            <div v-if="scannerMode" flex items-center justify-center gap-1.5 text-xs text-slate-500>
+              <div h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 />
+              <span>{{ scannerMode }}</span>
+            </div>
+            <div text-xs text-slate-600>
+              <span v-if="!scanLoading">将二维码放置在视图内</span>
+              <span v-else>请稍候，正在为所有用户签到</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 

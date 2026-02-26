@@ -13,6 +13,9 @@ export const useUserStore = defineStore('user', () => {
   // Scan mode: 'video' (default) or 'photo'
   const scanMode = ref<'video' | 'photo'>('video')
 
+  // Notify: whether to send group push notification after signin
+  const notifyEnabled = ref<boolean>(true)
+
   // Set user ID
   function setUserId(id: string) {
     userId.value = id
@@ -31,6 +34,11 @@ export const useUserStore = defineStore('user', () => {
   // Set scan mode
   function setScanMode(mode: 'video' | 'photo') {
     scanMode.value = mode
+  }
+
+  // Set notify enabled
+  function setNotifyEnabled(enabled: boolean) {
+    notifyEnabled.value = enabled
   }
 
   // Clear user data
@@ -56,10 +64,12 @@ export const useUserStore = defineStore('user', () => {
     apiEndpoint,
     userName,
     scanMode,
+    notifyEnabled,
     setUserId,
     setApiEndpoint,
     setUserName,
     setScanMode,
+    setNotifyEnabled,
     clearUser,
     clearApiEndpoint,
     clearAll,

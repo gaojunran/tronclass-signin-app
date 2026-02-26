@@ -27,10 +27,9 @@ const backendRepoUrl = ref('')
 const newName = ref('')
 const newCookie = ref('')
 const isAuto = ref(true)
-// Cookie update tab: 'manual' for manual cookie paste, 'identity' for unified identity
 const activeCookieTab = ref<'manual' | 'identity'>('manual')
 
-// Identity fields for automatic cookie update
+// Identity fields
 const identityAccount = ref('')
 const identityPassword = ref('')
 
@@ -52,12 +51,10 @@ onMounted(async () => {
     if (currentUser.value) {
       newName.value = currentUser.value.name
       isAuto.value = currentUser.value.is_auto
-      // initialize identity fields if available
       identityAccount.value = currentUser.value.identity_account || ''
       identityPassword.value = currentUser.value.identity_password || ''
     }
 
-    // Fetch backend repo URL
     try {
       const response = await fetch(`${userStore.apiEndpoint}/backend/repo/url`)
       if (response.ok) {
@@ -70,7 +67,7 @@ onMounted(async () => {
       backendRepoUrl.value = ''
     }
   }
-  catch (err) {
+  catch (_err) {
     error.value = '加载用户数据失败'
   }
   finally {
@@ -80,22 +77,17 @@ onMounted(async () => {
 
 // Update name
 async function updateName() {
-  if (!newName.value.trim() || newName.value === currentUser.value?.name) {
+  if (!newName.value.trim() || newName.value === currentUser.value?.name)
     return
-  }
 
   try {
     loading.value = true
     error.value = ''
     success.value = ''
-
     await renameUser(userStore.userId, newName.value.trim())
     userStore.setUserName(newName.value.trim())
-
-    if (currentUser.value) {
+    if (currentUser.value)
       currentUser.value.name = newName.value.trim()
-    }
-
     success.value = '名字修改成功'
   }
   catch (err) {
@@ -112,13 +104,9 @@ async function updateAutoSignin() {
     loading.value = true
     error.value = ''
     success.value = ''
-
     await updateUserAuto(userStore.userId, isAuto.value)
-
-    if (currentUser.value) {
+    if (currentUser.value)
       currentUser.value.is_auto = isAuto.value
-    }
-
     success.value = '自动签到设置已更新'
   }
   catch (err) {
@@ -140,13 +128,9 @@ async function updateCookie() {
     loading.value = true
     error.value = ''
     success.value = ''
-
     await refreshUserCookie(userStore.userId, newCookie.value.trim())
-
     success.value = 'Cookie 更新成功'
     newCookie.value = ''
-
-    // Reload user data
     const users = await getUserList()
     currentUser.value = users.find(u => u.id === userStore.userId) || null
   }
@@ -158,7 +142,7 @@ async function updateCookie() {
   }
 }
 
-// Update unified identity account/password
+// Update unified identity
 async function updateIdentity() {
   if (!identityAccount.value.trim() || !identityPassword.value.trim()) {
     error.value = '请输入账号和密码'
@@ -169,12 +153,8 @@ async function updateIdentity() {
     loading.value = true
     error.value = ''
     success.value = ''
-
     await updateUserIdentity(userStore.userId, identityAccount.value.trim(), identityPassword.value.trim())
-
     success.value = '统一身份认证信息更新成功'
-
-    // Reload user data
     const users = await getUserList()
     currentUser.value = users.find(u => u.id === userStore.userId) || null
   }
@@ -191,9 +171,7 @@ async function deleteAccount() {
   try {
     loading.value = true
     error.value = ''
-
     await removeUser(userStore.userId)
-
     userStore.clearUser()
     router.push('/')
   }
@@ -250,8 +228,6 @@ function changeApiEndpoint() {
 // Generate share link
 function generateShareLink() {
   const shareUrl = `${window.location.origin}/share?endpoint=${encodeURIComponent(userStore.apiEndpoint)}&user_id=${encodeURIComponent(userStore.userId)}`
-
-  // Copy to clipboard
   navigator.clipboard.writeText(shareUrl).then(() => {
     success.value = '分享链接已复制到剪贴板'
   }).catch((err) => {
@@ -262,111 +238,100 @@ function generateShareLink() {
 </script>
 
 <template>
-  <div min-h-screen bg-neutral-900 p-6 text-neutral-100>
-    <!-- Fixed Messages at Top -->
-    <div
-      v-if="error"
-
-      fixed left-6 right-6 top-6 z-50 mx-auto max-w-md flex items-center justify-between border-1 border-red-700 rounded-lg bg-red-900 bg-opacity-95 p-4 text-sm text-red-200 shadow-lg
-    >
-      <span>{{ error }}</span>
-      <button
-        ml-2
-        text-xs
-        underline
-        hover:text-red-100
-        @click="clearMessages"
-      >
-        关闭
-      </button>
-    </div>
-
-    <div
-      v-if="success"
-
-      fixed left-6 right-6 top-6 z-50 mx-auto max-w-md flex items-center justify-between border-1 border-green-700 rounded-lg bg-green-900 bg-opacity-95 p-4 text-sm text-green-200 shadow-lg
-    >
-      <span>{{ success }}</span>
-      <button
-        ml-2
-        text-xs
-        underline
-        hover:text-green-100
-        @click="clearMessages"
-      >
-        关闭
-      </button>
-    </div>
-
-    <div mx-auto mt-10 max-w-2xl>
-      <!-- Header -->
-      <div mb-8 flex items-center>
-        <button
-
-          mr-4 rounded bg-neutral-800 p-2 hover:bg-neutral-700
-          @click="goBack"
+  <div page-bg>
+    <!-- Toast Messages -->
+    <Teleport to="body">
+      <Transition name="toast">
+        <div
+          v-if="error"
+          fixed top-4 left-4 right-4 z-50 mx-auto max-w-md
+          rounded-lg backdrop-blur-md
+          p-3.5 text-xs text-rose-300 shadow-xl
+          class="bg-rose-500/10 border border-rose-500/20"
+          flex items-center justify-between
         >
-          <div i-carbon-arrow-left text-xl />
+          <div flex items-center gap-2>
+            <div i-carbon-warning text-sm text-rose-400 />
+            <span>{{ error }}</span>
+          </div>
+          <button btn-ghost text-rose-400 ml-3 @click="clearMessages">
+            <div i-carbon-close text-sm />
+          </button>
+        </div>
+      </Transition>
+      <Transition name="toast">
+        <div
+          v-if="success"
+          fixed top-4 left-4 right-4 z-50 mx-auto max-w-md
+          rounded-lg backdrop-blur-md
+          p-3.5 text-xs text-emerald-300 shadow-xl
+          class="bg-emerald-500/10 border border-emerald-500/20"
+          flex items-center justify-between
+        >
+          <div flex items-center gap-2>
+            <div i-carbon-checkmark text-sm text-emerald-400 />
+            <span>{{ success }}</span>
+          </div>
+          <button btn-ghost text-emerald-400 ml-3 @click="clearMessages">
+            <div i-carbon-close text-sm />
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <div mx-auto max-w-lg px-5 pt-8 pb-16>
+      <!-- Header -->
+      <div mb-8 flex items-center gap-3>
+        <button btn-ghost p-1.5 @click="goBack">
+          <div i-carbon-arrow-left text-lg />
         </button>
-        <div text-2xl font-bold>
-          设置
+        <h1 text-xl font-semibold tracking-tight text-slate-50>设置</h1>
+      </div>
+
+      <!-- Skeleton Loading -->
+      <div v-if="loading && !currentUser" space-y-4>
+        <div v-for="i in 4" :key="i" card p-5 animate-pulse>
+          <div h-3 w-16 rounded bg-slate-800 mb-4 />
+          <div h-10 rounded-lg class="bg-slate-800/50" />
         </div>
       </div>
 
-      <!-- Loading -->
-      <div v-if="loading && !currentUser" py-10 text-center>
-        <div i-carbon-loading animate-spin text-4xl />
-      </div>
-
       <!-- Content -->
-      <div v-else space-y-6>
-        <!-- User Info -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            用户信息
-          </div>
-
-          <div space-y-4>
+      <div v-else space-y-4>
+        <!-- User Profile Card -->
+        <div card p-5>
+          <h2 section-title>用户信息</h2>
+          <div flex items-center gap-3 mb-4>
+            <div
+              w-11 h-11 rounded-full flex items-center justify-center text-base font-semibold
+              class="bg-linear-to-br from-emerald-500/20 to-sky-500/20 text-emerald-300 border border-emerald-500/20"
+            >
+              {{ [...(currentUser?.name || '?')][0] }}
+            </div>
             <div>
-              <div mb-1 text-sm text-neutral-400>
-                用户 ID
-              </div>
-              <div break-all rounded bg-neutral-900 p-3 text-sm font-mono>
-                {{ userStore.userId }}
-              </div>
+              <div text-sm font-medium text-slate-100>{{ currentUser?.name || '未知' }}</div>
+              <div text-xs text-slate-500 font-mono mt-0.5>{{ userStore.userId.substring(0, 12) }}...</div>
             </div>
-
-            <div v-if="currentUser?.expires">
-              <div mb-1 text-sm text-neutral-400>
-                Cookie 过期时间
-              </div>
-              <div text-sm>
-                {{ new Date(currentUser.expires).toLocaleString() }}
-              </div>
-            </div>
+          </div>
+          <div v-if="currentUser?.expires" flex items-center gap-2 text-xs text-slate-500>
+            <div i-carbon-time text-sm />
+            <span>Cookie 过期：{{ new Date(currentUser.expires).toLocaleString() }}</span>
           </div>
         </div>
 
         <!-- Update Name -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            修改名字
-          </div>
-
-          <div flex gap-3>
+        <div card p-5>
+          <h2 section-title>修改名字</h2>
+          <div flex gap-2.5>
             <input
               v-model="newName"
               type="text"
               placeholder="输入新名字"
-
-              flex-1 border-1 border-neutral-700 rounded bg-neutral-900 px-4 py-3 focus:border-neutral-500 focus:outline-none
+              input-base flex-1 px-3.5 py-2.5 text-sm
             >
             <button
-
-              whitespace-nowrap rounded bg-orange-600 px-6 py-3 hover:bg-orange-500
-              :disabled="
-                loading || !newName.trim() || newName === currentUser?.name
-              "
+              btn-primary px-4 py-2.5 text-sm whitespace-nowrap
+              :disabled="loading || !newName.trim() || newName === currentUser?.name"
               @click="updateName"
             >
               更新
@@ -374,122 +339,120 @@ function generateShareLink() {
           </div>
         </div>
 
-        <!-- Auto Signin -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            自动签到
-          </div>
-
-          <label flex cursor-pointer items-center justify-between>
-            <div>
-              <div text-sm font-medium>启用自动签到</div>
-              <div mt-1 text-xs text-neutral-500>
-                当其他人扫码时自动为你签到
+        <!-- Signin Options -->
+        <div card p-5>
+          <h2 section-title>签到选项</h2>
+          <div space-y-4>
+            <!-- Auto signin -->
+            <label flex cursor-pointer items-center justify-between>
+              <div>
+                <div text-sm text-slate-200>自动签到</div>
+                <div text-xs text-slate-500 mt-0.5>当其他人扫码时自动为你签到</div>
               </div>
-            </div>
-            <div relative inline-block h-6 w-12>
-              <input
-                v-model="isAuto"
-                type="checkbox"
-                class="peer sr-only"
-                @change="updateAutoSignin"
-              >
-              <div
-                class="peer absolute inset-0 rounded-full transition-colors"
-                :class="isAuto ? 'bg-orange-600' : 'bg-neutral-700'"
-              />
-              <div
-                class="peer absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform"
-                :class="isAuto ? 'translate-x-6' : ''"
-              />
-            </div>
-          </label>
+              <div relative inline-block h-5 w-9>
+                <input
+                  v-model="isAuto"
+                  type="checkbox"
+                  class="peer sr-only"
+                  @change="updateAutoSignin"
+                >
+                <div
+                  class="absolute inset-0 rounded-full cursor-pointer transition-colors duration-200"
+                  :class="isAuto ? 'bg-emerald-500' : 'bg-slate-700'"
+                />
+                <div
+                  class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full pointer-events-none transition-transform duration-200 bg-white shadow-sm"
+                  :class="isAuto ? 'translate-x-4' : ''"
+                />
+              </div>
+            </label>
+
+            <div border-t class="border-slate-800/60" />
+
+            <!-- Notify -->
+            <label flex cursor-pointer items-center justify-between>
+              <div>
+                <div text-sm text-slate-200>群消息推送</div>
+                <div text-xs text-slate-500 mt-0.5>签到后发送群消息通知</div>
+              </div>
+              <div relative inline-block h-5 w-9>
+                <input
+                  v-model="userStore.notifyEnabled"
+                  type="checkbox"
+                  class="peer sr-only"
+                  @change="userStore.setNotifyEnabled(userStore.notifyEnabled)"
+                >
+                <div
+                  class="absolute inset-0 rounded-full cursor-pointer transition-colors duration-200"
+                  :class="userStore.notifyEnabled ? 'bg-emerald-500' : 'bg-slate-700'"
+                />
+                <div
+                  class="absolute top-0.5 left-0.5 h-4 w-4 rounded-full pointer-events-none transition-transform duration-200 bg-white shadow-sm"
+                  :class="userStore.notifyEnabled ? 'translate-x-4' : ''"
+                />
+              </div>
+            </label>
+          </div>
         </div>
 
         <!-- Scan Mode -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            扫码方式
-          </div>
-
-          <div space-y-3>
-            <label
-
-              flex cursor-pointer items-center rounded p-3 transition-colors
-              :class="userStore.scanMode === 'video' ? 'bg-orange-600 bg-opacity-20 border-1 border-orange-600' : 'bg-neutral-900 border-1 border-neutral-700 hover:bg-neutral-800'"
-              @click="userStore.setScanMode('video')"
+        <div card p-5>
+          <h2 section-title>扫码方式</h2>
+          <div space-y-2>
+            <button
+              v-for="mode in [
+                { value: 'video', label: '视频流扫码', desc: '实时扫描（默认推荐）', icon: 'i-carbon-video' },
+                { value: 'photo', label: '拍照上传', desc: '拍照后解析二维码', icon: 'i-carbon-camera' },
+              ]"
+              :key="mode.value"
+              w-full text-left flex items-center gap-3 rounded-lg p-3
+              transition-all duration-200 cursor-pointer
+              :class="userStore.scanMode === mode.value
+                ? 'bg-emerald-500/8 border border-emerald-500/20'
+                : 'bg-slate-800/30 border border-slate-800/50 hover:border-slate-700'"
+              @click="userStore.setScanMode(mode.value as 'video' | 'photo')"
             >
-              <input
-                type="radio"
-                name="scanMode"
-                value="video"
-                :checked="userStore.scanMode === 'video'"
-                class="sr-only"
+              <div
+                w-8 h-8 rounded-lg flex items-center justify-center
+                :class="userStore.scanMode === mode.value ? 'bg-emerald-500/15 text-emerald-400' : 'bg-slate-800 text-slate-500'"
               >
+                <div :class="mode.icon" text-base />
+              </div>
               <div flex-1>
-                <div text-sm font-medium>视频流扫码</div>
-                <div mt-1 text-xs text-neutral-400>
-                  实时扫描二维码（默认）
-                </div>
+                <div text-sm text-slate-200>{{ mode.label }}</div>
+                <div text-xs text-slate-500 mt-0.5>{{ mode.desc }}</div>
               </div>
               <div
-                v-if="userStore.scanMode === 'video'"
-                i-carbon-checkmark
-                text-xl
-                text-orange-500
+                v-if="userStore.scanMode === mode.value"
+                i-carbon-checkmark-filled text-emerald-400
               />
-            </label>
-
-            <label
-
-              flex cursor-pointer items-center rounded p-3 transition-colors
-              :class="userStore.scanMode === 'photo' ? 'bg-orange-600 bg-opacity-20 border-1 border-orange-600' : 'bg-neutral-900 border-1 border-neutral-700 hover:bg-neutral-800'"
-              @click="userStore.setScanMode('photo')"
-            >
-              <input
-                type="radio"
-                name="scanMode"
-                value="photo"
-                :checked="userStore.scanMode === 'photo'"
-                class="sr-only"
-              >
-              <div flex-1>
-                <div text-sm font-medium>拍照上传</div>
-                <div mt-1 text-xs text-neutral-400>
-                  拍照后上传解析二维码
-                </div>
-              </div>
-              <div
-                v-if="userStore.scanMode === 'photo'"
-                i-carbon-checkmark
-                text-xl
-                text-orange-500
-              />
-            </label>
+            </button>
           </div>
         </div>
 
-        <!-- Update Cookie (manual / identity tabs) -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            更新 Cookie
-          </div>
+        <!-- Update Cookie -->
+        <div card p-5>
+          <h2 section-title>更新 Cookie</h2>
 
-          <div mb-4 flex items-center gap-2>
+          <!-- Tab switcher -->
+          <div mb-4 flex rounded-lg p-0.5 class="bg-slate-950/60 border border-slate-800/50">
             <button
-              :class="activeCookieTab === 'manual' ? 'bg-orange-600' : 'bg-neutral-900'
-              "
-              class="flex-1 rounded px-4 py-2"
+              flex-1 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer
+              :class="activeCookieTab === 'manual'
+                ? 'bg-slate-800/80 text-slate-100 shadow-sm'
+                : 'text-slate-500 hover:text-slate-300'"
               @click="activeCookieTab = 'manual'"
             >
-              手动更新 Cookie
+              手动更新
             </button>
             <button
-              :class="activeCookieTab === 'identity' ? 'bg-orange-600' : 'bg-neutral-900'"
-              class="flex-1 rounded px-4 py-2"
+              flex-1 py-1.5 rounded-md text-xs font-medium transition-all duration-200 cursor-pointer
+              :class="activeCookieTab === 'identity'
+                ? 'bg-slate-800/80 text-slate-100 shadow-sm'
+                : 'text-slate-500 hover:text-slate-300'"
               @click="activeCookieTab = 'identity'"
             >
-              自动更新 Cookie（统一身份认证）
+              统一身份认证
             </button>
           </div>
 
@@ -497,15 +460,11 @@ function generateShareLink() {
             <textarea
               v-model="newCookie"
               placeholder="在此粘贴新的 Cookie"
-
-              rows="6"
-
-              w-full border-1 border-neutral-700 rounded bg-neutral-900 px-4 py-3 text-sm font-mono focus:border-neutral-500 focus:outline-none
+              rows="5"
+              input-base w-full px-3.5 py-2.5 text-xs font-mono resize-none
             />
-
             <button
-
-              mt-3 w-full rounded bg-orange-600 px-6 py-3 hover:bg-orange-500
+              btn-primary mt-2.5 w-full py-2.5 text-sm
               :disabled="loading || !newCookie.trim()"
               @click="updateCookie"
             >
@@ -513,171 +472,138 @@ function generateShareLink() {
             </button>
           </div>
 
-          <div v-else>
-            <div space-y-3>
-              <div>
-                <div mb-1 text-sm text-neutral-400>
-                  统一身份认证账号
-                </div>
-                <input
-                  v-model="identityAccount"
-                  type="text"
-                  placeholder="账号"
-
-                  w-full border-1 border-neutral-700 rounded bg-neutral-900 px-4 py-3 focus:border-neutral-500 focus:outline-none
-                >
-              </div>
-
-              <div>
-                <div mb-1 text-sm text-neutral-400>
-                  统一身份认证密码
-                </div>
-                <input
-                  v-model="identityPassword"
-                  type="password"
-                  placeholder="密码"
-
-                  w-full border-1 border-neutral-700 rounded bg-neutral-900 px-4 py-3 focus:border-neutral-500 focus:outline-none
-                >
-              </div>
+          <div v-else space-y-2.5>
+            <div>
+              <label text-xs text-slate-500 mb-1 block>账号</label>
+              <input
+                v-model="identityAccount"
+                type="text"
+                placeholder="统一身份认证账号"
+                input-base w-full px-3.5 py-2.5 text-sm
+              >
             </div>
-
+            <div>
+              <label text-xs text-slate-500 mb-1 block>密码</label>
+              <input
+                v-model="identityPassword"
+                type="password"
+                placeholder="统一身份认证密码"
+                input-base w-full px-3.5 py-2.5 text-sm
+              >
+            </div>
             <button
-
-              mt-3 w-full rounded bg-orange-600 px-6 py-3 hover:bg-orange-500
+              btn-primary mt-0.5 w-full py-2.5 text-sm
               :disabled="loading || !identityAccount.trim() || !identityPassword.trim()"
               @click="updateIdentity"
             >
-              更新统一身份认证信息
+              更新认证信息
             </button>
           </div>
         </div>
 
-        <!-- Share Link -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            分享链接
-          </div>
-
-          <div mb-3 text-sm text-neutral-400>
-            生成一个链接，让别人可以代你签到
-          </div>
-
+        <!-- Share -->
+        <div card p-5>
+          <h2 section-title>分享</h2>
+          <p text-xs text-slate-500 mb-3>生成链接，让别人可以代你签到</p>
           <button
-
-            w-full flex items-center justify-center gap-2 rounded bg-orange-600 px-6 py-3 hover:bg-orange-500
+            btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2
             @click="generateShareLink"
           >
-            <div i-carbon-share />
-            <span>生成分享链接</span>
+            <div i-carbon-share text-sm />
+            <span>复制分享链接</span>
           </button>
         </div>
 
-        <!-- Logout & Change API -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            账号管理
-          </div>
-
-          <div space-y-3>
+        <!-- Account -->
+        <div card p-5>
+          <h2 section-title>账号</h2>
+          <div space-y-2>
             <button
-
-              w-full flex items-center justify-center gap-2 rounded bg-neutral-700 px-6 py-3 hover:bg-neutral-600
+              btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2
               @click="logout"
             >
-              <div i-carbon-logout />
+              <div i-carbon-logout text-sm />
               <span>退出登录</span>
             </button>
-
             <button
-
-              w-full flex items-center justify-center gap-2 rounded bg-neutral-700 px-6 py-3 hover:bg-neutral-600
+              btn-secondary w-full py-2.5 text-sm flex items-center justify-center gap-2
               @click="changeApiEndpoint"
             >
-              <div i-carbon-settings-adjust />
+              <div i-carbon-settings-adjust text-sm />
               <span>更换 API 端点</span>
             </button>
-
             <button
-
-              w-full flex items-center justify-center gap-2 rounded bg-red-900 px-6 py-3 text-red-200 hover:bg-red-800
+              w-full py-2.5 text-sm flex items-center justify-center gap-2 rounded-lg cursor-pointer
+              transition-all duration-200
+              class="bg-rose-500/8 border border-rose-500/20 text-rose-400 hover:bg-rose-500/15"
               @click="showDeleteConfirm = true"
             >
-              <div i-carbon-trash-can />
+              <div i-carbon-trash-can text-sm />
               <span>删除账号</span>
             </button>
           </div>
         </div>
 
-        <!-- GitHub Link -->
-        <div border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6>
-          <div mb-4 text-lg font-bold>
-            关于
-          </div>
-
-          <div space-y-3>
+        <!-- About -->
+        <div card p-5>
+          <h2 section-title>关于</h2>
+          <div space-y-2>
             <a
               href="https://github.com/gaojunran/tronclass-signin-app"
-              target="_blank"
-              rel="noopener noreferrer"
-
-              w-full flex items-center justify-center gap-2 rounded bg-neutral-700 px-6 py-3 text-neutral-100 no-underline hover:bg-neutral-600
+              target="_blank" rel="noopener noreferrer"
+              block btn-secondary w-full py-2.5 text-sm text-center
+              flex items-center justify-center gap-2 no-underline
             >
-              <div i-carbon-logo-github />
-              <span>查看 Web 应用仓库</span>
+              <div i-carbon-logo-github text-sm />
+              <span>Web 应用仓库</span>
             </a>
-
             <a
               :href="backendRepoUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-
-              w-full flex items-center justify-center gap-2 rounded bg-neutral-700 px-6 py-3 text-neutral-100 no-underline hover:bg-neutral-600
+              target="_blank" rel="noopener noreferrer"
+              block btn-secondary w-full py-2.5 text-sm text-center
+              flex items-center justify-center gap-2 no-underline
             >
-              <div i-carbon-logo-github />
-              <span>查看 API 端点仓库</span>
+              <div i-carbon-logo-github text-sm />
+              <span>API 端点仓库</span>
             </a>
           </div>
         </div>
       </div>
 
       <!-- Delete Confirmation Modal -->
-      <div
-        v-if="showDeleteConfirm"
-
-        fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-6
-      >
+      <Teleport to="body">
         <div
-
-          max-w-md w-full border-1 border-neutral-700 rounded-lg bg-neutral-800 p-6
+          v-if="showDeleteConfirm"
+          fixed inset-0 z-50 flex items-center justify-center
+          backdrop-blur-sm p-5
+          class="bg-black/80"
         >
-          <div mb-4 text-xl font-bold>
-            确认删除
-          </div>
-
-          <div mb-6 text-sm text-neutral-300>
-            你确定要删除你的账号吗？此操作无法撤销。
-          </div>
-
-          <div flex gap-3>
-            <button
-
-              flex-1 rounded bg-neutral-700 px-4 py-3 hover:bg-neutral-600
-              @click="showDeleteConfirm = false"
-            >
-              取消
-            </button>
-            <button
-
-              flex-1 rounded bg-red-900 px-4 py-3 text-red-200 hover:bg-red-800
-              :disabled="loading"
-              @click="deleteAccount"
-            >
-              {{ loading ? "删除中..." : "删除" }}
-            </button>
+          <div card max-w-sm w-full p-6 shadow-2xl class="border-slate-700/50">
+            <div flex items-center gap-2 mb-2>
+              <div i-carbon-warning-alt text-lg text-rose-400 />
+              <h2 text-base font-semibold text-slate-50>确认删除</h2>
+            </div>
+            <p text-sm text-slate-400 mb-5>此操作无法撤销，确定要删除你的账号吗？</p>
+            <div flex gap-2.5>
+              <button
+                btn-secondary flex-1 py-2.5 text-sm
+                @click="showDeleteConfirm = false"
+              >
+                取消
+              </button>
+              <button
+                flex-1 py-2.5 rounded-lg text-sm font-medium cursor-pointer
+                class="bg-rose-500/15 border border-rose-500/20 text-rose-400 hover:bg-rose-500/25"
+                transition-all duration-200
+                :disabled="loading"
+                @click="deleteAccount"
+              >
+                {{ loading ? "删除中..." : "确认删除" }}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </Teleport>
     </div>
   </div>
 </template>

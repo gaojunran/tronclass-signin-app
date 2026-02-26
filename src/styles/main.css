@@ -9,12 +9,12 @@ body,
 }
 
 html.dark {
-  background: #171717;
+  background: #020617;
   color-scheme: dark;
 }
 
 html {
-  background: #171717;
+  background: #020617;
 }
 
 #nprogress {
@@ -22,7 +22,7 @@ html {
 }
 
 #nprogress .bar {
-  background: rgb(13, 148, 136);
+  background: rgb(16, 185, 129);
   opacity: 0.75;
   position: fixed;
   z-index: 1031;

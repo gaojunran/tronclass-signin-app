@@ -27,6 +27,9 @@ export function useQRScanner() {
   const error = ref<string | null>(null)
   const result = ref<string | null>(null)
 
+  // Track which scanner mode is active: 'BarcodeDetector' or 'qr-scanner'
+  const scannerMode = ref<'BarcodeDetector' | '视频流扫码' | null>(null)
+
   // Native BarcodeDetector state
   let nativeDetector: any = null
   let nativeStream: MediaStream | null = null
@@ -128,10 +131,12 @@ export function useQRScanner() {
       const useNative = await isBarcodeDetectorAvailable()
       if (useNative) {
         console.log('Using native BarcodeDetector API for QR scanning')
+        scannerMode.value = 'BarcodeDetector'
         await startNativeScanning(videoElement, onScanSuccess)
       }
       else {
         console.log('BarcodeDetector not available, falling back to qr-scanner library')
+        scannerMode.value = '视频流扫码'
         await startQrScannerLibrary(videoElement, onScanSuccess)
       }
     }
@@ -170,6 +175,7 @@ export function useQRScanner() {
     isScanning,
     error,
     result,
+    scannerMode,
     startScanning,
     stopScanning,
   }

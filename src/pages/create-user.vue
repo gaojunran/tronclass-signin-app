@@ -1,225 +1,181 @@
 <script setup lang="ts">
-import { addUser, refreshUserCookie } from "~/api";
+import { addUser, refreshUserCookie, updateUserAuto } from '~/api'
 
 defineOptions({
-  name: "CreateUserPage",
-});
+  name: 'CreateUserPage',
+})
 
-const userStore = useUserStore();
-const router = useRouter();
+const userStore = useUserStore()
+const router = useRouter()
 
-// Form state
-const name = ref("");
-const isAuto = ref(true);
-const cookie = ref("");
-const loading = ref(false);
-const error = ref("");
+const name = ref('')
+const isAuto = ref(true)
+const cookie = ref('')
+const loading = ref(false)
+const error = ref('')
 
-// Create user
-async function createUser() {
+async function handleSubmit() {
   if (!name.value.trim()) {
-    error.value = "请输入名字";
-    return;
+    error.value = '请输入用户名'
+    return
   }
 
   try {
-    loading.value = true;
-    error.value = "";
+    loading.value = true
+    error.value = ''
 
-    // Step 1: Add user
-    const { id } = await addUser(name.value.trim());
+    // Step 1: Create user
+    const { id } = await addUser(name.value.trim())
 
-    // Step 2: Update is_auto if needed
+    // Step 2: Update auto setting if needed
     if (!isAuto.value) {
-      await fetch(`${userStore.apiEndpoint}/user/auto/${id}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ua_info: await getBrowserInfo(),
-          is_auto: false,
-        }),
-      });
+      await updateUserAuto(id, isAuto.value)
     }
 
-    // Step 3: Refresh cookie (only if provided)
+    // Step 3: Set cookie if provided
     if (cookie.value.trim()) {
-      await refreshUserCookie(id, cookie.value.trim());
+      await refreshUserCookie(id, cookie.value.trim())
     }
 
     // Save to store
-    userStore.setUserId(id);
-    userStore.setUserName(name.value.trim());
+    userStore.setUserId(id)
+    userStore.setUserName(name.value.trim())
 
     // Navigate to main page
-    router.push("/");
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "创建用户失败";
-  } finally {
-    loading.value = false;
+    router.push('/')
+  }
+  catch (err) {
+    error.value = err instanceof Error ? err.message : '创建失败'
+  }
+  finally {
+    loading.value = false
   }
 }
 
-// Get browser info
-async function getBrowserInfo() {
-  try {
-    if (
-      navigator.userAgentData &&
-      navigator.userAgentData.getHighEntropyValues
-    ) {
-      const info = (await navigator.userAgentData.getHighEntropyValues([
-        "model",
-        "platform",
-        "platformVersion",
-        "architecture",
-        "bitness",
-        "uaFullVersion",
-      ])) as any;
-
-      const uaCHString = [
-        `Platform: ${info.platform || "Unknown"}`,
-        `Version: ${info.platformVersion || "Unknown"}`,
-        `Model: ${info.model || "Unknown"}`,
-        `Architecture: ${info.architecture || "Unknown"}`,
-        `Bitness: ${info.bitness || "Unknown"}`,
-        `FullVersion: ${info.uaFullVersion || "Unknown"}`,
-      ].join(" | ");
-
-      return uaCHString;
-    } else {
-      return `User-Agent: ${navigator.userAgent}`;
-    }
-  } catch (err) {
-    console.error("获取 UA 信息失败:", err);
-    return `User-Agent: ${navigator.userAgent}`;
-  }
-}
-
-// Go back
 function goBack() {
-  router.back();
+  router.back()
 }
 </script>
 
 <template>
-  <div min-h-screen bg-neutral-900 text-neutral-100 p-6>
-    <div max-w-2xl mx-auto mt-10>
+  <div page-bg>
+    <div mx-auto max-w-lg px-6 pb-16 pt-8>
       <!-- Header -->
-      <div flex items-center mb-8>
-        <button
-          bg-neutral-800
-          hover:bg-neutral-700
-          p-2
-          rounded
-          mr-4
-          @click="goBack"
-        >
-          <div i-carbon-arrow-left text-xl />
+      <div mb-8 flex items-center gap-3>
+        <button btn-ghost p-1.5 @click="goBack">
+          <div i-carbon-arrow-left text-lg />
         </button>
-        <div text-2xl font-bold>创建新用户</div>
+        <h1 text-xl text-slate-50 font-semibold tracking-tight>
+          创建用户
+        </h1>
+      </div>
+
+      <!-- Error -->
+      <div v-if="error" mb-5 flex items-center gap-2 rounded-lg p-3 text-xs text-rose-400 class="border border-rose-500/20 bg-rose-500/10">
+        <div i-carbon-warning flex-shrink-0 text-sm />
+        <span>{{ error }}</span>
       </div>
 
       <!-- Form -->
-      <div bg-neutral-800 border-1 border-neutral-700 rounded-lg p-6>
+      <form space-y-5 @submit.prevent="handleSubmit">
         <!-- Name -->
-        <div mb-6>
-          <label text-sm text-neutral-400 mb-2 block>
-            名字 <span text-red-400>*</span>
-          </label>
-          <input
-            v-model="name"
-            type="text"
-            placeholder="输入你的名字"
-            bg-neutral-900
-            border-1
-            border-neutral-700
-            rounded
-            px-4
-            py-3
-            w-full
-            focus:outline-none
-            focus:border-neutral-500
-          />
+        <div card p-5>
+          <h2 section-title>
+            基本信息
+          </h2>
+          <div>
+            <label mb-1.5 block text-xs text-slate-500>
+              用户名 <span text-rose-400>*</span>
+            </label>
+            <input
+              v-model="name"
+              type="text"
+              placeholder="输入用户名"
+              input-base w-full px-3.5 py-2.5 text-sm
+            >
+          </div>
         </div>
 
-        <!-- Auto Signin -->
-        <div mb-6>
-          <label flex items-center cursor-pointer>
-            <input v-model="isAuto" type="checkbox" mr-3 />
+        <!-- Options -->
+        <div card p-5>
+          <h2 section-title>
+            签到选项
+          </h2>
+          <label flex cursor-pointer items-center justify-between>
             <div>
-              <div text-sm font-medium>启用自动签到</div>
-              <div text-xs text-neutral-500>当其他人扫码时自动为你签到</div>
+              <div text-sm text-slate-200>自动签到</div>
+              <div mt-0.5 text-xs text-slate-500>扫码时自动帮此用户一起签到</div>
+            </div>
+            <div relative inline-block h-5 w-9>
+              <input
+                v-model="isAuto"
+                type="checkbox"
+                class="peer sr-only"
+              >
+              <div
+                class="absolute inset-0 cursor-pointer rounded-full transition-colors duration-200"
+                :class="isAuto ? 'bg-emerald-500' : 'bg-slate-700'"
+                @click="isAuto = !isAuto"
+              />
+              <div
+                class="pointer-events-none absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200"
+                :class="isAuto ? 'translate-x-4' : ''"
+              />
             </div>
           </label>
         </div>
 
         <!-- Cookie -->
-        <div mb-6>
-          <label text-sm text-neutral-400 mb-2 block>
-            Cookie <span text-neutral-500>(可选)</span>
-          </label>
-          <textarea
-            v-model="cookie"
-            placeholder="在此粘贴你的 Cookie（可以稍后在设置页面添加）"
-            bg-neutral-900
-            border-1
-            border-neutral-700
-            rounded
-            px-4
-            py-3
-            w-full
-            rows="6"
-            font-mono
-            text-sm
-            focus:outline-none
-            focus:border-neutral-500
-          />
-        </div>
+        <div card p-5>
+          <h2 section-title>
+            认证信息
+          </h2>
+          <div space-y-3>
+            <div>
+              <label mb-1.5 block text-xs text-slate-500>
+                Cookie
+                <span text-slate-600>（可选）</span>
+              </label>
+              <textarea
+                v-model="cookie"
+                placeholder="粘贴 Cookie"
+                rows="3"
+                input-base w-full resize-none px-3.5 py-2.5 text-xs font-mono
+              />
+            </div>
 
-        <!-- Error -->
-        <div
-          v-if="error"
-          bg-red-900
-          bg-opacity-20
-          border-1
-          border-red-700
-          rounded
-          p-3
-          text-red-400
-          text-sm
-          mb-6
-        >
-          {{ error }}
+            <!-- Help -->
+            <!-- <div
+
+              flex items-start gap-2 rounded-lg p-3
+              class="border border-slate-800/50 bg-slate-800/30"
+            >
+              <div i-carbon-information mt-0.5 flex-shrink-0 text-sm text-slate-500 />
+              <div text-xs text-slate-500 space-y-1>
+                <div>不填写 Cookie 的用户将使用扫码者的 Cookie</div>
+                <div>获取方式：登录 TronClass → F12 → Network → 复制 Cookie</div>
+              </div>
+            </div> -->
+          </div>
         </div>
 
         <!-- Submit -->
         <button
-          bg-orange-600
-          hover:bg-orange-500
-          text-white
-          px-6
-          py-3
-          rounded
-          w-full
-          font-medium
-          :disabled="loading"
-          @click="createUser"
-        >
-          {{ loading ? "创建中..." : "创建用户" }}
-        </button>
-      </div>
+          type="submit"
 
-      <!-- Help Text -->
-      <div mt-6 text-sm text-neutral-500>
-        <div mb-2>
-          <div i-carbon-help inline-block mr-1 />
-          如何获取 Cookie：
-        </div>
-        <ol list-decimal list-inside space-y-1 ml-4>
-          <li>打开电脑版畅课并登录</li>
-          <li>F12 -> 输入 <code>document.cookie</code> 回车</li>
-          <li>复制形如 <code>session=xxxxxx</code>到文本框中</li>
-        </ol>
-      </div>
+          btn-primary w-full flex items-center justify-center gap-2 py-3 text-sm
+          :disabled="loading"
+        >
+          <template v-if="loading">
+            <div i-carbon-loading animate-spin text-sm />
+            <span>创建中...</span>
+          </template>
+          <template v-else>
+            <div i-carbon-add text-sm />
+            <span>创建用户</span>
+          </template>
+        </button>
+      </form>
     </div>
   </div>
 </template>
