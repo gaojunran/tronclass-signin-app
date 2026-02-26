@@ -42,6 +42,7 @@ const lastSignin = ref<SigninHistory | null>(null);
 // Todos
 const todos = ref<TodoItem[]>([]);
 const todosError = ref<string>("");
+const todosLoading = ref(false);
 
 // User map for displaying names
 const userMap = ref<Map<string, string>>(new Map());
@@ -139,14 +140,22 @@ async function loadMainData() {
     // Build user map
     userMap.value = new Map(allUsers.map((u) => [u.id, u.name]));
 
-    // Load todos separately to handle errors independently
+    // Load todos separately with 5s timeout, won't block UI
+    todosLoading.value = true;
     try {
-      const todosData = await getTodos(userStore.userId);
+      const todosData = await Promise.race([
+        getTodos(userStore.userId),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("加载待办事项超时")), 5000),
+        ),
+      ]);
       todos.value = todosData.todo_list || [];
     } catch (err) {
       todosError.value =
         err instanceof Error ? err.message : "加载待办事项失败";
       console.error("加载待办事项失败:", err);
+    } finally {
+      todosLoading.value = false;
     }
   } catch (err) {
     console.error("加载数据失败:", err);
@@ -727,9 +736,15 @@ async function debugWithLastResult() {
       <div mb-8>
         <div text-lg font-bold mb-4>待办事项</div>
 
+        <!-- Loading State -->
+        <div v-if="todosLoading" text-center py-8>
+          <div i-carbon-loading animate-spin text-4xl text-neutral-400 />
+          <div text-neutral-500 mt-2>加载中</div>
+        </div>
+
         <!-- Error Display -->
         <div
-          v-if="todosError"
+          v-else-if="todosError"
           bg-red-900
           bg-opacity-20
           border-1
@@ -753,7 +768,7 @@ async function debugWithLastResult() {
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="todos.length === 0" text-center py-8 text-neutral-500>
+        <div v-else-if="!todosLoading && todos.length === 0" text-center py-8 text-neutral-500>
           暂无待办事项
         </div>
 
