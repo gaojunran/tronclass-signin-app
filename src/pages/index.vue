@@ -193,7 +193,7 @@ async function startQRScan() {
 
       if (videoElement.value) {
         try {
-          await startScanning(videoElement.value, handleScanResult)
+          await startScanning(videoElement.value, handleScanResult, userStore.scanMode === 'barcode')
         }
         catch (err) {
           console.warn('无法启动摄像头，fallback到调试模式:', err)

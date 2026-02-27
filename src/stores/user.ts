@@ -10,8 +10,8 @@ export const useUserStore = defineStore('user', () => {
   // User name
   const userName = ref<string>('')
 
-  // Scan mode: 'video' (default) or 'photo'
-  const scanMode = ref<'video' | 'photo'>('video')
+  // Scan mode: 'video' (default), 'barcode' (native BarcodeDetector), or 'photo'
+  const scanMode = ref<'video' | 'barcode' | 'photo'>('video')
 
   // Notify: whether to send group push notification after signin
   const notifyEnabled = ref<boolean>(true)
@@ -32,7 +32,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // Set scan mode
-  function setScanMode(mode: 'video' | 'photo') {
+  function setScanMode(mode: 'video' | 'barcode' | 'photo') {
     scanMode.value = mode
   }
 

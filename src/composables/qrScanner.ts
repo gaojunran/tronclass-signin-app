@@ -4,7 +4,7 @@ import QrScanner from 'qr-scanner'
 /**
  * Check if the native BarcodeDetector API is available and supports QR codes
  */
-async function isBarcodeDetectorAvailable(): Promise<boolean> {
+export async function isBarcodeDetectorAvailable(): Promise<boolean> {
   if (!('BarcodeDetector' in window)) {
     return false
   }
@@ -118,24 +118,24 @@ export function useQRScanner() {
 
   /**
    * Start the camera and begin scanning
-   * Prefers native BarcodeDetector, falls back to qr-scanner library
+   * Uses native BarcodeDetector if useNative is true, otherwise qr-scanner library
    */
   async function startScanning(
     videoElement: HTMLVideoElement,
     onScanSuccess: (scanResult: string) => void,
+    useNative: boolean = false,
   ) {
     try {
       error.value = null
       result.value = null
 
-      const useNative = await isBarcodeDetectorAvailable()
       if (useNative) {
         console.log('Using native BarcodeDetector API for QR scanning')
         scannerMode.value = 'BarcodeDetector'
         await startNativeScanning(videoElement, onScanSuccess)
       }
       else {
-        console.log('BarcodeDetector not available, falling back to qr-scanner library')
+        console.log('Using qr-scanner library for QR scanning')
         scannerMode.value = '视频流扫码'
         await startQrScannerLibrary(videoElement, onScanSuccess)
       }

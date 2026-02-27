@@ -8,6 +8,7 @@ import {
   updateUserAuto,
   updateUserIdentity,
 } from '~/api'
+import { isBarcodeDetectorAvailable } from '~/composables/qrScanner'
 
 defineOptions({
   name: 'SettingsPage',
@@ -36,8 +37,18 @@ const identityPassword = ref('')
 // Confirmation dialogs
 const showDeleteConfirm = ref(false)
 
+// BarcodeDetector availability
+const barcodeDetectorAvailable = ref(false)
+
 // Load current user data
 onMounted(async () => {
+  // Check BarcodeDetector availability
+  barcodeDetectorAvailable.value = await isBarcodeDetectorAvailable()
+  // If user previously selected barcode but it's no longer available, reset to video
+  if (userStore.scanMode === 'barcode' && !barcodeDetectorAvailable.value) {
+    userStore.setScanMode('video')
+  }
+
   if (!userStore.userId) {
     router.push('/')
     return
@@ -401,16 +412,21 @@ function generateShareLink() {
           <div space-y-2>
             <button
               v-for="mode in [
-                { value: 'video', label: '视频流扫码', desc: '实时扫描（默认推荐）', icon: 'i-carbon-video' },
-                { value: 'photo', label: '拍照上传', desc: '拍照后解析二维码', icon: 'i-carbon-camera' },
+                { value: 'video', label: '视频流扫码', desc: '实时扫描（默认推荐）', icon: 'i-carbon-video', disabled: false },
+                { value: 'barcode', label: 'BarcodeDetector', desc: barcodeDetectorAvailable ? '使用浏览器原生 API 扫码' : '当前浏览器不支持', icon: 'i-carbon-barcode', disabled: !barcodeDetectorAvailable },
+                { value: 'photo', label: '拍照上传', desc: '拍照后解析二维码', icon: 'i-carbon-camera', disabled: false },
               ]"
               :key="mode.value"
               w-full text-left flex items-center gap-3 rounded-lg p-3
-              transition-all duration-200 cursor-pointer
-              :class="userStore.scanMode === mode.value
-                ? 'bg-emerald-500/8 border border-emerald-500/20'
-                : 'bg-slate-800/30 border border-slate-800/50 hover:border-slate-700'"
-              @click="userStore.setScanMode(mode.value as 'video' | 'photo')"
+              transition-all duration-200
+              :class="[
+                userStore.scanMode === mode.value
+                  ? 'bg-emerald-500/8 border border-emerald-500/20'
+                  : 'bg-slate-800/30 border border-slate-800/50 hover:border-slate-700',
+                mode.disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+              ]"
+              :disabled="mode.disabled"
+              @click="!mode.disabled && userStore.setScanMode(mode.value as 'video' | 'barcode' | 'photo')"
             >
               <div
                 w-8 h-8 rounded-lg flex items-center justify-center
