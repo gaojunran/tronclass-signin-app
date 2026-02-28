@@ -1,10 +1,7 @@
 <script setup lang="ts">
 import type { SigninResponse } from "~/types/index";
 import { signin } from "~/api";
-import { isTauri } from "~/utils/tauri";
-import { useQRScanner } from "~/composables/qrScanner";
-import { useQRPhoto } from "~/composables/qrPhoto";
-import { useTauriQRScanner } from "~/composables/tauriQrScanner";
+import { QrcodeStream } from "vue-qrcode-reader";
 
 defineOptions({
   name: "SharePage",
@@ -24,10 +21,6 @@ const originalEndpoint = ref<string>("");
 
 // QR Scanner
 const showScanner = ref(false);
-const videoElement = ref<HTMLVideoElement | null>(null);
-const { startScanning, stopScanning, isScanning } = useQRScanner();
-const { triggerFileInput, isProcessing } = useQRPhoto();
-const { startScanning: startTauriScanning, stopScanning: stopTauriScanning, isScanning: isTauriScanning } = useTauriQRScanner();
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null);
@@ -60,54 +53,29 @@ onUnmounted(() => {
 });
 
 // Start QR scanning
-async function startQRScan() {
+function startQRScan() {
   scanResult.value = null;
   error.value = "";
+  showScanner.value = true;
+}
 
-  // Check scan mode
-  if (userStore.scanMode === 'photo') {
-    // Photo upload mode
-    const input = triggerFileInput(handleScanResult);
-    input.click();
-  } else {
-    // Video stream mode (default)
-    // Check if running in Tauri environment
-    if (isTauri()) {
-      // Use Tauri barcode scanner
-      try {
-        await startTauriScanning(handleScanResult);
-      } catch (err) {
-        error.value = "无法启动摄像头，请检查权限设置";
-        console.error("Tauri扫码失败:", err);
-      }
-    } else {
-      // Use web-based QR scanner
-      showScanner.value = true;
-      await nextTick();
+// Handle QrcodeStream detect event
+function onQrDetect(detectedCodes: Array<{ rawValue: string }>) {
+  if (loading.value || detectedCodes.length === 0)
+    return;
+  handleScanResult(detectedCodes[0].rawValue);
+}
 
-      if (videoElement.value) {
-        try {
-          await startScanning(videoElement.value, handleScanResult);
-        } catch (err) {
-          error.value = "无法启动摄像头，请检查权限设置";
-          console.error("摄像头启动失败:", err);
-        }
-      }
-    }
-  }
+// Handle QrcodeStream error event
+function onQrError(err: Error) {
+  error.value = "无法启动摄像头，请检查权限设置";
+  console.error("QR Scanner error:", err);
+  showScanner.value = false;
 }
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  // Only stop scanning if in video mode
-  if (userStore.scanMode === 'video') {
-    if (isTauri()) {
-      stopTauriScanning();
-    } else {
-      stopScanning();
-    }
-  }
-  
+  showScanner.value = false;
   loading.value = true;
   error.value = "";
 
@@ -251,7 +219,11 @@ function getUserName(userId: string): string {
           overflow-hidden
           relative
         >
-          <video ref="videoElement" w-full h-auto max-h-70vh object-contain />
+          <QrcodeStream
+            :paused="loading"
+            @detect="onQrDetect"
+            @error="onQrError"
+          />
 
           <!-- Loading Overlay -->
           <div

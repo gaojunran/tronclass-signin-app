@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",
-    "@tauri-apps/plugin-barcode-scanner": "~2.4.2",
     "@tauri-apps/plugin-opener": "^2.5.2",
     "@unhead/vue": "catalog:frontend",
     "@unocss/reset": "catalog:frontend",
@@ -29,9 +28,9 @@
     "nprogress": "catalog:frontend",
     "pinia": "catalog:frontend",
     "pinia-plugin-persistedstate": "^4.7.1",
-    "qr-scanner": "^1.4.2",
     "vue": "catalog:frontend",
     "vue-i18n": "catalog:frontend",
+    "vue-qrcode-reader": "^5.7.3",
     "vue-router": "catalog:frontend"
   },
   "devDependencies": {

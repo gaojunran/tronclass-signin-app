@@ -18,11 +18,8 @@ import {
   signinStream,
   signinDigitalStream,
 } from '~/api'
-import { useQRPhoto } from '~/composables/qrPhoto'
-import { useQRScanner } from '~/composables/qrScanner'
-import { useTauriQRScanner } from '~/composables/tauriQrScanner'
+import { QrcodeStream } from 'vue-qrcode-reader'
 import { formatRelativeTime } from '~/utils'
-import { isTauri } from '~/utils/tauri'
 import SigninProgress from '~/components/SigninProgress.vue'
 
 defineOptions({
@@ -54,14 +51,6 @@ const userMap = ref<Map<string, string>>(new Map())
 
 // QR Scanner
 const showScanner = ref(false)
-const videoElement = ref<HTMLVideoElement | null>(null)
-const { startScanning, stopScanning, isScanning, scannerMode } = useQRScanner()
-const { triggerFileInput, isProcessing: _isProcessing } = useQRPhoto()
-const {
-  startScanning: startTauriScanning,
-  stopScanning: stopTauriScanning,
-  isScanning: _isTauriScanning,
-} = useTauriQRScanner()
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null)
@@ -177,54 +166,30 @@ async function loadMainData() {
 }
 
 // Start QR scanning
-async function startQRScan() {
+function startQRScan() {
   scanResult.value = null
   scanStreamEvents.value = []
   digitalResult.value = null
   digitalStreamEvents.value = []
+  showScanner.value = true
+}
 
-  if (userStore.scanMode === 'photo') {
-    const input = triggerFileInput(handleScanResult)
-    input.click()
-  }
-  else {
-    if (isTauri()) {
-      try {
-        await startTauriScanning(handleScanResult)
-      }
-      catch (err) {
-        console.warn('Tauri扫码失败，fallback到调试模式:', err)
-        await debugWithLastResult()
-      }
-    }
-    else {
-      showScanner.value = true
-      await nextTick()
+// Handle QrcodeStream detect event
+function onQrDetect(detectedCodes: Array<{ rawValue: string }>) {
+  if (scanLoading.value || detectedCodes.length === 0)
+    return
+  handleScanResult(detectedCodes[0].rawValue)
+}
 
-      if (videoElement.value) {
-        try {
-          await startScanning(videoElement.value, handleScanResult, userStore.scanMode === 'barcode')
-        }
-        catch (err) {
-          console.warn('无法启动摄像头，fallback到调试模式:', err)
-          await debugWithLastResult()
-        }
-      }
-    }
-  }
+// Handle QrcodeStream error event
+function onQrError(err: Error) {
+  console.error('QR Scanner error:', err)
+  showScanner.value = false
 }
 
 // Handle scan result
 async function handleScanResult(result: string) {
-  if (userStore.scanMode === 'video') {
-    if (isTauri()) {
-      stopTauriScanning()
-    }
-    else {
-      stopScanning()
-    }
-  }
-
+  showScanner.value = false
   scanLoading.value = true
   scanStreamEvents.value = []
   scanStreaming.value = true
@@ -255,12 +220,6 @@ async function handleScanResult(result: string) {
 
 // Close scanner
 function closeScanner() {
-  if (isTauri()) {
-    stopTauriScanning()
-  }
-  else {
-    stopScanning()
-  }
   showScanner.value = false
 }
 
@@ -327,7 +286,7 @@ function closeDigitalDialog() {
 
 // Debug: use last scan result from backend
 async function debugWithLastResult() {
-  stopScanning()
+  showScanner.value = false
   scanLoading.value = true
   scanStreamEvents.value = []
   scanStreaming.value = true
@@ -573,11 +532,11 @@ async function debugWithLastResult() {
       <div grid grid-cols-2 mb-8 gap-3>
         <button
           btn-primary flex items-center justify-center gap-2 py-3.5 text-sm
-          :disabled="isScanning || scanLoading"
+          :disabled="scanLoading"
           @click="startQRScan"
         >
           <div i-carbon-qr-code text-base />
-          <span>{{ isScanning ? "扫码中..." : "扫码签到" }}</span>
+          <span>扫码签到</span>
         </button>
 
         <button
@@ -803,17 +762,18 @@ async function debugWithLastResult() {
                 <div i-carbon-debug text-sm />
                 <span>调试</span>
               </button>
-              <button v-if="!isTauri()" btn-ghost p-1.5 @click="closeScanner">
+              <button btn-ghost p-1.5 @click="closeScanner">
                 <div i-carbon-close text-lg />
-              </button>
-              <button v-else btn-ghost p-1.5 @click="router.push('/')">
-                <div i-carbon-home text-lg />
               </button>
             </div>
           </div>
 
           <div card relative min-h-0 flex-shrink overflow-hidden>
-            <video ref="videoElement" h-auto max-h-70vh w-full object-contain />
+            <QrcodeStream
+              :paused="scanLoading"
+              @detect="onQrDetect"
+              @error="onQrError"
+            />
             <!-- Scan Loading Overlay -->
             <div
               v-if="scanLoading"
@@ -825,11 +785,7 @@ async function debugWithLastResult() {
           </div>
 
           <!-- Scanner status -->
-          <div mt-3 flex-shrink-0 text-center space-y-1>
-            <div v-if="scannerMode" flex items-center justify-center gap-1.5 text-xs text-slate-500>
-              <div h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400 />
-              <span>{{ scannerMode }}</span>
-            </div>
+          <div mt-3 flex-shrink-0 text-center>
             <div text-xs text-slate-600>
               <span v-if="!scanLoading">将二维码放置在视图内</span>
               <span v-else>请稍候，正在为所有用户签到</span>
