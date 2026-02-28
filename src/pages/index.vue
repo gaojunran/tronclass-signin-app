@@ -4,6 +4,7 @@ import type {
   ScanHistory,
   SigninHistory,
   SigninResponse,
+  SigninStreamEvent,
   TodoItem,
   UserWithCookie,
 } from '~/types/index'
@@ -14,12 +15,15 @@ import {
   getUserList,
   signin,
   signinDigital,
+  signinStream,
+  signinDigitalStream,
 } from '~/api'
 import { useQRPhoto } from '~/composables/qrPhoto'
 import { useQRScanner } from '~/composables/qrScanner'
 import { useTauriQRScanner } from '~/composables/tauriQrScanner'
 import { formatRelativeTime } from '~/utils'
 import { isTauri } from '~/utils/tauri'
+import SigninProgress from '~/components/SigninProgress.vue'
 
 defineOptions({
   name: 'IndexPage',
@@ -61,11 +65,15 @@ const {
 
 // Scan result display
 const scanResult = ref<SigninResponse | null>(null)
+const scanStreamEvents = ref<SigninStreamEvent[]>([])
+const scanStreaming = ref(false)
 
 // Digital signin dialog
 const showDigitalDialog = ref(false)
 const digitalCode = ref('')
 const digitalResult = ref<DigitalSigninResponse | null>(null)
+const digitalStreamEvents = ref<SigninStreamEvent[]>([])
+const digitalStreaming = ref(false)
 
 // Initialize
 onMounted(async () => {
@@ -171,7 +179,9 @@ async function loadMainData() {
 // Start QR scanning
 async function startQRScan() {
   scanResult.value = null
+  scanStreamEvents.value = []
   digitalResult.value = null
+  digitalStreamEvents.value = []
 
   if (userStore.scanMode === 'photo') {
     const input = triggerFileInput(handleScanResult)
@@ -216,10 +226,22 @@ async function handleScanResult(result: string) {
   }
 
   scanLoading.value = true
+  scanStreamEvents.value = []
+  scanStreaming.value = true
+  scanResult.value = null
+  digitalResult.value = null
+  digitalStreamEvents.value = []
+  showScanner.value = false
 
   try {
-    const response = await signin(result, userStore.userId, userStore.notifyEnabled)
-    scanResult.value = response
+    await signinStream(
+      result,
+      userStore.userId,
+      userStore.notifyEnabled,
+      (ev) => {
+        scanStreamEvents.value = [...scanStreamEvents.value, ev]
+      },
+    )
     await loadMainData()
   }
   catch (err) {
@@ -227,7 +249,7 @@ async function handleScanResult(result: string) {
   }
   finally {
     scanLoading.value = false
-    showScanner.value = false
+    scanStreaming.value = false
   }
 }
 
@@ -259,7 +281,9 @@ function getUserName(userId: string): string {
 // Start digital signin
 function startDigitalSignin() {
   scanResult.value = null
+  scanStreamEvents.value = []
   digitalResult.value = null
+  digitalStreamEvents.value = []
   digitalCode.value = ''
   showDigitalDialog.value = true
 }
@@ -268,16 +292,22 @@ function startDigitalSignin() {
 async function handleDigitalSignin() {
   scanLoading.value = true
   error.value = ''
+  digitalStreamEvents.value = []
+  digitalStreaming.value = true
+  digitalResult.value = null
+  scanResult.value = null
+  scanStreamEvents.value = []
+  showDigitalDialog.value = false
 
   try {
-    const response = await signinDigital(
+    await signinDigitalStream(
       userStore.userId,
       digitalCode.value || undefined,
       userStore.notifyEnabled,
+      (ev) => {
+        digitalStreamEvents.value = [...digitalStreamEvents.value, ev]
+      },
     )
-    digitalResult.value = response
-    scanResult.value = null
-    showDigitalDialog.value = false
     await loadMainData()
   }
   catch (err) {
@@ -285,6 +315,7 @@ async function handleDigitalSignin() {
   }
   finally {
     scanLoading.value = false
+    digitalStreaming.value = false
   }
 }
 
@@ -298,19 +329,28 @@ function closeDigitalDialog() {
 async function debugWithLastResult() {
   stopScanning()
   scanLoading.value = true
+  scanStreamEvents.value = []
+  scanStreaming.value = true
+  scanResult.value = null
+  digitalResult.value = null
+  digitalStreamEvents.value = []
+  showScanner.value = false
 
   try {
     const lastScans = await getScanHistory(1)
     if (lastScans.length === 0) {
       error.value = '没有历史扫描记录'
-      scanLoading.value = false
-      showScanner.value = false
       return
     }
-
     const lastScanResult = lastScans[0].result
-    const response = await signin(lastScanResult, userStore.userId, userStore.notifyEnabled)
-    scanResult.value = response
+    await signinStream(
+      lastScanResult,
+      userStore.userId,
+      userStore.notifyEnabled,
+      (ev) => {
+        scanStreamEvents.value = [...scanStreamEvents.value, ev]
+      },
+    )
     await loadMainData()
   }
   catch (err) {
@@ -318,7 +358,7 @@ async function debugWithLastResult() {
   }
   finally {
     scanLoading.value = false
-    showScanner.value = false
+    scanStreaming.value = false
   }
 }
 </script>
@@ -482,114 +522,47 @@ async function debugWithLastResult() {
         </button>
       </div>
 
-      <!-- ── Scan Result ── -->
+      <!-- ── Scan Stream Progress ── -->
       <div
-        v-if="scanResult"
-        class="card mb-5 border-emerald-500/20 from-emerald-500/10 to-emerald-500/5 bg-linear-to-br p-5"
+        v-if="scanStreamEvents.length > 0"
+        class="card mb-5 border-emerald-500/15 from-emerald-500/8 to-transparent bg-linear-to-br p-5"
       >
-        <div mb-3 flex items-center gap-2>
-          <div i-carbon-checkmark-filled text-emerald-400 />
-          <span text-sm text-emerald-300 font-medium>扫码签到完成</span>
-        </div>
-        <div mb-2 text-xs text-slate-500>
-          签到结果（{{ scanResult.signin_results.length }} 人）
-        </div>
-        <div space-y-1.5>
-          <div
-            v-for="item in scanResult.signin_results"
-            :key="item.id"
-            class="rounded-lg bg-slate-950/60 p-3 text-xs"
-          >
-            <div flex items-center justify-between>
-              <span text-slate-200 font-medium>{{ getUserName(item.user_id) }}</span>
-              <span
-                font-mono
-                :class="
-                  item.response_code === 200
-                    ? 'text-emerald-400'
-                    : item.response_code === null
-                      ? 'text-amber-400'
-                      : 'text-rose-400'
-                "
-              >
-                {{ item.response_code ?? "失败" }}
-              </span>
-            </div>
-            <div v-if="item.response_code !== 200" class="mt-2 border-t border-slate-800/50 pt-2">
-              <div max-h-32 overflow-y-auto break-all text-xs text-rose-400 font-mono>
-                {{ typeof item.response_data === "string" ? item.response_data : JSON.stringify(item.response_data, null, 2) }}
-              </div>
-            </div>
-          </div>
-        </div>
-        <button btn-ghost mt-3 text-xs @click="scanResult = null">
+        <SigninProgress
+          :events="scanStreamEvents"
+          mode="qr"
+          :streaming="scanStreaming"
+        />
+        <button
+          v-if="!scanStreaming"
+          btn-ghost mt-4 text-xs
+          @click="scanStreamEvents = []"
+        >
           关闭
         </button>
       </div>
 
-      <!-- ── Digital Result ── -->
+      <!-- ── Digital Stream Progress ── -->
       <div
-        v-if="digitalResult"
-        class="card mb-5 border-sky-500/20 from-sky-500/10 to-sky-500/5 bg-linear-to-br p-5"
+        v-if="digitalStreamEvents.length > 0"
+        class="card mb-5 border-sky-500/15 from-sky-500/8 to-transparent bg-linear-to-br p-5"
       >
-        <div mb-3 flex items-center gap-2>
-          <div i-carbon-checkmark-filled text-sky-400 />
-          <span text-sm text-sky-300 font-medium>数字签到完成</span>
-        </div>
-        <div mb-3>
-          <div mb-1 text-xs text-slate-500>
-            签到码
-          </div>
-          <div
-            class="rounded-lg bg-slate-950/60 p-2.5 text-center text-sm text-sky-400 font-semibold tracking-widest font-mono"
-          >
-            {{
-              digitalResult.signin_results.length > 0
-                && digitalResult.signin_results[0].request_data?.numberCode
-                ? digitalResult.signin_results[0].request_data.numberCode
-                : "遍历破解"
-            }}
-          </div>
-        </div>
-        <div mb-2 text-xs text-slate-500>
-          签到结果（{{ digitalResult.signin_results.length }} 人）
-        </div>
-        <div space-y-1.5>
-          <div
-            v-for="item in digitalResult.signin_results"
-            :key="item.id"
-            class="rounded-lg bg-slate-950/60 p-3 text-xs"
-          >
-            <div flex items-center justify-between>
-              <span text-slate-200 font-medium>{{ getUserName(item.user_id) }}</span>
-              <span
-                font-mono
-                :class="
-                  item.response_code === 200
-                    ? 'text-emerald-400'
-                    : item.response_code === null
-                      ? 'text-amber-400'
-                      : 'text-rose-400'
-                "
-              >
-                {{ item.response_code ?? "失败" }}
-              </span>
-            </div>
-            <div v-if="item.response_code !== 200" class="mt-2 border-t border-slate-800/50 pt-2">
-              <div max-h-32 overflow-y-auto break-all text-xs text-rose-400 font-mono>
-                {{ typeof item.response_data === "string" ? item.response_data : JSON.stringify(item.response_data, null, 2) }}
-              </div>
-            </div>
-          </div>
-        </div>
-        <button btn-ghost mt-3 text-xs @click="digitalResult = null">
+        <SigninProgress
+          :events="digitalStreamEvents"
+          mode="digital"
+          :streaming="digitalStreaming"
+        />
+        <button
+          v-if="!digitalStreaming"
+          btn-ghost mt-4 text-xs
+          @click="digitalStreamEvents = []"
+        >
           关闭
         </button>
       </div>
 
-      <!-- ── Scan Loading Indicator ── -->
+      <!-- ── Scan Loading Indicator (before stream starts) ── -->
       <div
-        v-if="scanLoading && !showScanner"
+        v-if="scanLoading && !scanStreaming && !showScanner && scanStreamEvents.length === 0 && digitalStreamEvents.length === 0"
         class="card mb-5 flex flex-col items-center gap-3 border-emerald-500/10 p-6"
       >
         <div i-carbon-circle-dash animate-spin text-3xl text-emerald-400 />
@@ -618,7 +591,7 @@ async function debugWithLastResult() {
       </div>
 
       <!-- ── Page Data Loading ── -->
-      <div v-if="pageLoading && !scanResult && !digitalResult" space-y-4>
+      <div v-if="pageLoading && !scanStreamEvents.length && !digitalStreamEvents.length" space-y-4>
         <div>
           <div class="mb-3 h-4 w-20 rounded bg-slate-800" />
           <div space-y-2>
@@ -780,12 +753,12 @@ async function debugWithLastResult() {
             <input
               v-model="digitalCode"
               type="text"
-              placeholder="输入数字签到码"
+              placeholder="输入数字签到码，留空则遍历破解"
               input-base w-full py-3 text-center text-lg tracking-widest font-mono
               @keydown.enter="handleDigitalSignin"
             >
             <p mt-2 text-center text-xs text-slate-600>
-              留空则使用遍历破解方式
+              签到开始后，进度将在主页实时展示
             </p>
           </div>
 
@@ -794,7 +767,7 @@ async function debugWithLastResult() {
             :disabled="scanLoading"
             @click="handleDigitalSignin"
           >
-            {{ scanLoading ? "请稍等..." : "开始签到" }}
+            {{ scanLoading ? '请稍等...' : digitalCode ? '开始签到' : '遍历破解并签到' }}
           </button>
 
           <div v-if="error" mt-3>
@@ -847,7 +820,7 @@ async function debugWithLastResult() {
               class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-slate-950/90 backdrop-blur-sm"
             >
               <div i-carbon-circle-dash animate-spin text-4xl text-emerald-400 />
-              <span text-sm text-slate-400>正在处理签到...</span>
+              <span text-sm text-slate-400>已扫码，正在提交...</span>
             </div>
           </div>
 

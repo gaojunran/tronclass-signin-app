@@ -7,6 +7,7 @@ import type {
   DigitalSigninResponse,
   UserAddResponse,
   TodoListResponse,
+  SigninStreamEvent,
 } from "~/types/index";
 import { useUserStore } from "~/stores/user";
 
@@ -276,3 +277,103 @@ export async function getTodos(user_id: string): Promise<TodoListResponse> {
 
   return fetchAPI<TodoListResponse>(`/todos?${params.toString()}`);
 }
+
+/**
+ * Stream QR-code sign-in progress as JSON Lines.
+ * Calls `onEvent` for each parsed event line.
+ * Returns when the stream ends (done or error event).
+ */
+export async function signinStream(
+  scan_result: string,
+  user_id: string,
+  notify: boolean | undefined,
+  onEvent: (event: SigninStreamEvent) => void,
+): Promise<void> {
+  const ua_info = await getBrowserInfo();
+  const url = `${getApiEndpoint()}/signin/stream`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ua_info, scan_result, user_id, notify }),
+  });
+
+  if (!response.ok || !response.body) {
+    let msg = `HTTP ${response.status}`;
+    try {
+      const d = await response.json();
+      if (d.error) msg = d.error;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  await consumeJsonLineStream(response.body, onEvent);
+}
+
+/**
+ * Stream digital sign-in progress as JSON Lines.
+ */
+export async function signinDigitalStream(
+  user_id: string,
+  data: string | undefined,
+  notify: boolean | undefined,
+  onEvent: (event: SigninStreamEvent) => void,
+): Promise<void> {
+  const ua_info = await getBrowserInfo();
+  const url = `${getApiEndpoint()}/signin-digital/stream`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ua_info, user_id, data, notify }),
+  });
+
+  if (!response.ok || !response.body) {
+    let msg = `HTTP ${response.status}`;
+    try {
+      const d = await response.json();
+      if (d.error) msg = d.error;
+    } catch {}
+    throw new Error(msg);
+  }
+
+  await consumeJsonLineStream(response.body, onEvent);
+}
+
+/** Read a ReadableStream of bytes, split by newlines, parse each line as JSON. */
+async function consumeJsonLineStream(
+  body: ReadableStream<Uint8Array>,
+  onEvent: (event: SigninStreamEvent) => void,
+): Promise<void> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    // last element may be incomplete
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        const event = JSON.parse(trimmed) as SigninStreamEvent;
+        onEvent(event);
+      } catch {
+        // ignore malformed lines
+      }
+    }
+  }
+
+  // flush remaining
+  if (buffer.trim()) {
+    try {
+      const event = JSON.parse(buffer.trim()) as SigninStreamEvent;
+      onEvent(event);
+    } catch {}
+  }
+}
+

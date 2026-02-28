@@ -89,3 +89,47 @@ export interface TodoItem {
 export interface TodoListResponse {
   todo_list: TodoItem[]
 }
+
+// ──────────────────────────────────────────────
+// Streaming sign-in event types (JSON Lines protocol)
+// ──────────────────────────────────────────────
+
+export type SigninStreamEventType =
+  | 'start'
+  | 'progress'
+  | 'user_result'
+  | 'done'
+  | 'error'
+
+export type SigninPhase =
+  | 'save_scan'
+  | 'parse_qr'
+  | 'fetch_users'
+  | 'filter_absence'
+  | 'signing'
+  | 'fetch_rollcalls'
+  | 'brute_force'
+  | 'brute_force_progress'
+  | 'brute_force_found'
+  | 'notify'
+  | 'save_log'
+
+export interface SigninStreamEvent {
+  type: SigninStreamEventType
+  ts: number
+  // start
+  mode?: 'qr' | 'digital'
+  // progress
+  phase?: SigninPhase
+  message?: string
+  detail?: string
+  // user_result
+  user_id?: string
+  user_name?: string
+  success?: boolean
+  code?: number | null
+  // done
+  summary?: string
+  // error (also uses message)
+}
+
