@@ -63,3 +63,9 @@ onlyBuiltDependencies:
   - cypress
   - esbuild
   - simple-git-hooks
+catalog:
+  '@tauri-apps/api': ^2.9.0
+  '@tauri-apps/cli': ^2.9.4
+  '@tauri-apps/plugin-opener': ^2.5.2
+  pinia-plugin-persistedstate: ^4.7.1
+  vue-qrcode-reader: ^5.7.3
